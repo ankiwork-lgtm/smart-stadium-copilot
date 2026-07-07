@@ -1,0 +1,220 @@
+{
+  "venueName": "Legacy Stadium (simulated)",
+  "city": "Dallas, TX",
+  "event": "FIFA World Cup 2026",
+  "capacity": 80000,
+  "gates": [
+    {
+      "id": "gate-a",
+      "name": "Gate A",
+      "label": "North Entry",
+      "zone": "North",
+      "accessible": true,
+      "coords": [400, 80],
+      "description": "Main north entrance, nearest to parking lots P1–P3 and Stadium Station (Blue Line)."
+    },
+    {
+      "id": "gate-b",
+      "name": "Gate B",
+      "label": "East Entry",
+      "zone": "East",
+      "accessible": true,
+      "coords": [720, 340],
+      "description": "East entrance, closest to drop-off zone and Route 42 bus stop."
+    },
+    {
+      "id": "gate-c",
+      "name": "Gate C",
+      "label": "South Entry",
+      "zone": "South",
+      "accessible": false,
+      "coords": [400, 600],
+      "description": "South entrance. Steps only — not wheelchair accessible. Use Gate A or B for accessibility needs."
+    },
+    {
+      "id": "gate-d",
+      "name": "Gate D",
+      "label": "West Entry",
+      "zone": "West",
+      "accessible": true,
+      "coords": [80, 340],
+      "description": "West entrance with rideshare/taxi pickup zone in Lot C immediately outside."
+    },
+    {
+      "id": "gate-e",
+      "name": "Gate E",
+      "label": "VIP / Media Entry",
+      "zone": "North-West",
+      "accessible": true,
+      "coords": [200, 140],
+      "description": "Reserved for credentialed media and VIP ticket holders. Accessible route available."
+    }
+  ],
+  "facilities": [
+    {
+      "id": "rest-1",
+      "name": "Restroom Block A",
+      "type": "restroom",
+      "accessible": true,
+      "nearGate": "gate-a",
+      "zone": "North",
+      "coords": [360, 150],
+      "description": "Accessible restrooms with family room. Located 30 m inside Gate A."
+    },
+    {
+      "id": "rest-2",
+      "name": "Restroom Block B",
+      "type": "restroom",
+      "accessible": true,
+      "nearGate": "gate-b",
+      "zone": "East",
+      "coords": [650, 300],
+      "description": "Accessible restrooms near section 114–118. Located 20 m inside Gate B."
+    },
+    {
+      "id": "rest-3",
+      "name": "Restroom Block C",
+      "type": "restroom",
+      "accessible": false,
+      "nearGate": "gate-c",
+      "zone": "South",
+      "coords": [400, 540],
+      "description": "Standard restrooms near south concourse. Not wheelchair accessible."
+    },
+    {
+      "id": "quiet-1",
+      "name": "Sensory Room",
+      "type": "sensory_room",
+      "accessible": true,
+      "nearGate": "gate-b",
+      "zone": "East",
+      "coords": [670, 210],
+      "description": "Quiet sensory room for guests with sensory processing needs. Low lighting, noise-reduced. Open all match hours. Capacity 10."
+    },
+    {
+      "id": "medic-1",
+      "name": "First Aid Station A",
+      "type": "first_aid",
+      "accessible": true,
+      "nearGate": "gate-a",
+      "zone": "North",
+      "coords": [440, 130],
+      "description": "Primary first aid post staffed by paramedics. Open from gates-open to 30 min post-match."
+    },
+    {
+      "id": "medic-2",
+      "name": "First Aid Station B",
+      "type": "first_aid",
+      "accessible": true,
+      "nearGate": "gate-c",
+      "zone": "South",
+      "coords": [360, 570],
+      "description": "Secondary first aid post. Located near south concourse."
+    },
+    {
+      "id": "food-1",
+      "name": "Concession Stand — North Plaza",
+      "type": "concession",
+      "accessible": true,
+      "nearGate": "gate-a",
+      "zone": "North",
+      "coords": [330, 200],
+      "description": "Full-service food and beverage. Includes halal and vegetarian options. Accepts card and contactless."
+    },
+    {
+      "id": "food-2",
+      "name": "Concession Stand — South Concourse",
+      "type": "concession",
+      "accessible": true,
+      "nearGate": "gate-c",
+      "zone": "South",
+      "coords": [460, 560],
+      "description": "Quick-service snacks and beverages. Accepts card and contactless."
+    },
+    {
+      "id": "recycle-2",
+      "name": "Recycling Station — East Plaza",
+      "type": "recycling",
+      "accessible": true,
+      "nearGate": "gate-b",
+      "zone": "East",
+      "coords": [700, 380],
+      "description": "Sorted recycling bins: plastics, cans, paper. Part of the FIFA 2026 Zero-Waste initiative."
+    }
+  ],
+  "transitOptions": [
+    {
+      "id": "train-1",
+      "mode": "train",
+      "line": "Blue Line",
+      "stop": "Stadium Station",
+      "nearGate": "gate-a",
+      "frequency": "Every 8 min on match days",
+      "travelTimeToCenter": "22 min to Downtown Dallas",
+      "firstService": "06:00",
+      "lastService": "01:30",
+      "note": "Add 30 min buffer post-match for platform crowd."
+    },
+    {
+      "id": "bus-1",
+      "mode": "bus",
+      "line": "Route 42",
+      "stop": "Stadium Plaza",
+      "nearGate": "gate-b",
+      "frequency": "Every 15 min",
+      "travelTimeToCenter": "35 min to Convention Center",
+      "firstService": "07:00",
+      "lastService": "00:30",
+      "note": "Express service runs 90 min before and after kick-off."
+    },
+    {
+      "id": "bus-2",
+      "mode": "bus",
+      "line": "Route 17 (Shuttle)",
+      "stop": "North Parking Shuttle",
+      "nearGate": "gate-a",
+      "frequency": "Every 10 min, match days only",
+      "travelTimeToCenter": "10 min to P1 parking lot",
+      "firstService": "Gate open minus 2 hrs",
+      "lastService": "Gate close plus 1 hr",
+      "note": "Free shuttle between Stadium Station and remote parking lots P1–P3."
+    },
+    {
+      "id": "rideshare-1",
+      "mode": "rideshare",
+      "line": "Uber / Lyft",
+      "pickupZone": "Lot C Pickup — Gate D",
+      "nearGate": "gate-d",
+      "note": "Designated pickup and drop-off only. Follow in-app pin labeled 'Legacy Stadium – Lot C'. No curbside pickup."
+    }
+  ],
+  "sustainabilityPoints": [
+    {
+      "id": "recycle-1",
+      "name": "Recycling Station — North Plaza",
+      "type": "recycling",
+      "nearGate": "gate-a",
+      "zone": "North",
+      "coords": [370, 170],
+      "description": "Sorted recycling bins at the main north entrance. Plastic, glass, and mixed recycling."
+    },
+    {
+      "id": "recycle-2",
+      "name": "Recycling Station — East Plaza",
+      "type": "recycling",
+      "nearGate": "gate-b",
+      "zone": "East",
+      "coords": [700, 380],
+      "description": "Sorted recycling bins near Gate B. Part of the FIFA 2026 Zero-Waste initiative."
+    },
+    {
+      "id": "water-1",
+      "name": "Refill Station — North Concourse",
+      "type": "water_refill",
+      "nearGate": "gate-a",
+      "zone": "North",
+      "coords": [410, 190],
+      "description": "Free water refill point. Bring a reusable bottle to help reduce single-use plastic. Chilled water available."
+    }
+  ]
+}
