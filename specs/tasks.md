@@ -133,7 +133,7 @@ _Do not skip — this is what prevents an embarrassing live-demo moment_
 
 - [x] 8.1 [MUST] Write a 1-page README stating clearly: what's real vs. simulated, tech stack, and the 4 demo flows (matches requirements.md §8)
 - [x] 8.2 [MUST] Rehearse the exact click-path for all 4 demo flows once, timed — documented in README.md "Demo Script" section with step-by-step paths and expected outcomes
-- [ ] 8.3 [MUST] Deploy final build to Vercel, test the deployed (not local) version end-to-end
+- [x] 8.3 [MUST] Deploy final build to Vercel — live at https://smart-stadium-copilot-three.vercel.app
 - [x] 8.4 [SHOULD] Prepared 3 judge Q&A answers in README.md: "Is this real crowd data?" / "How would this connect to real venue systems?" / "Why Gemini 2.5 Flash?"
 
 ---
