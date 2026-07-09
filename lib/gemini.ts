@@ -30,12 +30,16 @@ import type {
 // Client singleton — one instance per server process
 // ---------------------------------------------------------------------------
 
+let _client: GoogleGenAI | null = null;
+
 function getClient(): GoogleGenAI {
+  if (_client) return _client;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY environment variable is not set.");
   }
-  return new GoogleGenAI({ apiKey });
+  _client = new GoogleGenAI({ apiKey });
+  return _client;
 }
 
 // ---------------------------------------------------------------------------

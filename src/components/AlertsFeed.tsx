@@ -92,8 +92,11 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const prevHighCountRef = useRef(0);
+  const fetchInProgressRef = useRef(false);
 
   const fetchAlerts = async () => {
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
     setFetching(true);
     try {
       const res = await fetch("/api/alerts");
@@ -114,13 +117,23 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
     } finally {
       setLoading(false);
       setFetching(false);
+      fetchInProgressRef.current = false;
     }
   };
 
   useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      fetchAlerts();
+    };
+
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 8000);
-    return () => clearInterval(interval);
+    const interval = setInterval(tick, 8000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

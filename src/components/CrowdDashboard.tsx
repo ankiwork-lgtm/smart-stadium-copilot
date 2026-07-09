@@ -108,8 +108,11 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
   const [triggeringSpike, setTriggeringSpike] = useState(false);
   const prevStateRef = useRef<LiveState | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fetchInProgressRef = useRef(false);
 
   const fetchSimData = async () => {
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
     try {
       const res = await fetch("/api/sim-data");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -123,14 +126,22 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
       setError("Unable to fetch live data. Retrying…");
     } finally {
       setLoading(false);
+      fetchInProgressRef.current = false;
     }
   };
 
   useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      fetchSimData();
+    };
+
     fetchSimData();
-    intervalRef.current = setInterval(fetchSimData, 5000);
+    intervalRef.current = setInterval(tick, 5000);
+    document.addEventListener("visibilitychange", tick);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener("visibilitychange", tick);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

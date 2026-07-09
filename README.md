@@ -38,11 +38,11 @@ The **simulated-data badge** is always visible in the app so judges and users ar
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | **Next.js 15** (App Router) | SSR + API routes in one project; Vercel-native |
+| Framework | **Next.js 16** (App Router) | SSR + API routes in one project; Vercel-native |
 | Language | **TypeScript 5** | End-to-end types across lib, API, and UI |
 | AI | **Google Gemini 2.5 Flash** (`@google/genai` SDK) | Fastest Gemini model, long-context system prompts, streaming support |
 | Styling | **Tailwind CSS 3** | Rapid dark-theme UI, responsive grid |
-| State | **React Context** (`UserContextProvider`) | Lightweight — no Redux needed for this scope |
+| State | **React 19 Context** (`UserContextProvider`) | Lightweight — no Redux needed for this scope; persisted to `localStorage` |
 | Data | **Static JSON** + **module-level singleton** (`simEngine.ts`) | No database required; server-process state survives between polls |
 | Deploy | **Vercel** | Zero-config Next.js deploy, edge-friendly |
 
@@ -52,36 +52,48 @@ The **simulated-data badge** is always visible in the app so judges and users ar
 
 ```
 smart-stadium-copilot/
-├── app/                    # Next.js App Router pages & API routes
-│   ├── page.tsx            # Landing page (Fan App / Ops Console links)
-│   ├── fan/                # Fan App route
-│   ├── ops/                # Ops Console route
+├── app/                        # Next.js API routes (server-side only)
 │   └── api/
-│       ├── assistant/      # POST — streaming Gemini chat
-│       ├── sim-data/       # GET — advance simulation + return LiveState
+│       ├── assistant/          # POST — streaming Gemini chat
+│       ├── sim-data/           # GET — advance simulation + return LiveState
 │       │   └── trigger-spike/  # POST — force congestion spike
-│       ├── alerts/         # GET — threshold-breach alerts (AI-generated)
-│       ├── briefing/       # POST — AI shift briefing
-│       ├── venue/          # GET — static venue.json
-│       └── warmup/         # GET — pre-warm Gemini connection
-├── lib/
-│   ├── gemini.ts           # All Gemini calls (askAssistant, stream, structured)
-│   ├── simEngine.ts        # Simulation tick engine + triggerSpike()
-│   └── types.ts            # Shared TypeScript types (source of truth)
+│       ├── alerts/             # GET — threshold-breach alerts (AI-generated)
+│       ├── briefing/           # POST — AI shift briefing
+│       ├── venue/              # GET — static venue.json
+│       └── warmup/             # GET — pre-warm Gemini connection
 ├── src/
-│   ├── app/                # Client pages (fan/page.tsx, ops/page.tsx)
-│   └── components/         # All React components
-│       ├── AppShell.tsx    # Nav bar, role toggle, language picker
-│       ├── ChatPanel.tsx   # Streaming chat UI (shared across fan + ops)
-│       ├── VenueMap.tsx    # SVG map with highlighted pins
-│       ├── IntentChips.tsx # Quick-select mode chips
-│       ├── CrowdDashboard.tsx
-│       ├── AlertsFeed.tsx
-│       ├── BriefingPanel.tsx
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── page.tsx            # Landing page (Fan App / Ops Console links)
+│   │   ├── layout.tsx          # Root layout
+│   │   ├── globals.css         # Global styles
+│   │   ├── fan/                # Fan App route (page.tsx + layout.tsx)
+│   │   └── ops/                # Ops Console route (page.tsx + layout.tsx)
+│   └── components/             # All React components
+│       ├── AppShell.tsx        # Nav bar, role toggle, language picker
+│       ├── ChatPanel.tsx       # Streaming chat UI (shared across fan + ops)
+│       ├── VenueMap.tsx        # SVG map with highlighted pins
+│       ├── IntentChips.tsx     # Quick-select mode chips
+│       ├── CrowdDashboard.tsx  # Gate-level crowd density cards
+│       ├── AlertsFeed.tsx      # AI-generated ops alert list
+│       ├── BriefingPanel.tsx   # Shift briefing generator
 │       ├── SustainabilityCard.tsx
-│       └── AccessibilityPrefsModal.tsx
-└── data/
-    └── venue.json          # Static venue data (gates, facilities, transit, sustainability)
+│       ├── AccessibilityPrefsModal.tsx
+│       ├── SimulatedDataBadge.tsx  # Persistent "Simulated data · Demo only" badge
+│       └── UserContextProvider.tsx # React Context + localStorage persistence
+├── lib/
+│   ├── gemini.ts               # All Gemini calls (askAssistant, stream, structured)
+│   ├── simEngine.ts            # Simulation tick engine + triggerSpike()
+│   └── types.ts                # Shared TypeScript types (source of truth)
+├── data/
+│   └── venue.json              # Static venue data (gates, facilities, transit, sustainability)
+├── scripts/
+│   ├── hello-gemini.ts         # Smoke-test: verifies Gemini API key works
+│   └── test-reasoning.ts       # Manual reasoning/prompt test harness
+├── specs/
+│   ├── requirements.md         # Product requirements
+│   ├── design.md               # Architecture & design document
+│   └── tasks.md                # Sequenced implementation task list
+└── .env.example                # Template — copy to .env.local and add your key
 ```
 
 ---
@@ -101,7 +113,9 @@ cd smart-stadium-copilot
 npm install
 
 # 2. Set your Gemini API key
-echo 'GEMINI_API_KEY=your_key_here' > .env.local
+cp .env.example .env.local
+# Then edit .env.local and replace the placeholder with your actual key.
+# Get a key at: https://aistudio.google.com/app/apikey
 
 # 3. Run the dev server
 npm run dev
