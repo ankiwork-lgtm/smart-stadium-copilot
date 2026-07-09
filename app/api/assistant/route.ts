@@ -33,6 +33,7 @@ const VALID_MODES: AssistantMode[] = [
   "briefing",
   "transport",
   "translation",
+  "sustainability",
 ];
 
 const VALID_ROLES = ["fan", "ops_staff", "volunteer"] as const;

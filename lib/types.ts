@@ -68,7 +68,8 @@ export type AssistantMode =
   | "ops_alert"
   | "briefing"
   | "transport"
-  | "translation";
+  | "translation"
+  | "sustainability";
 
 export type AssistantRequest = {
   userMessage: string;

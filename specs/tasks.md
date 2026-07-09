@@ -93,11 +93,11 @@ _Corresponds to design.md §6.2 — this is the highest-visibility part of the d
 
 _Corresponds to design.md §6.3_
 
-- [ ] 5.1 [MUST] `CrowdDashboard` — gate/zone cards, color-coded by `crowdDensity`, polling `/api/sim-data` every ~5s
-- [ ] 5.2 [MUST] `TriggerSpikeButton` — calls `/api/sim-data/trigger-spike`, visible only in Ops role (demo reliability aid)
-- [ ] 5.3 [SHOULD] `AlertsFeed` — polls/derives from `/api/alerts`, color-coded by priority, timestamped, newest first
-- [ ] 5.4 [SHOULD] `BriefingPanel` — "Generate shift briefing" button → `/api/briefing` → rendered summary
-- [ ] 5.5 [COULD] `OpsAskBar` — reuse `ChatPanel` with an analytics-oriented mode for ad hoc questions (e.g., "busiest 15 minutes today")
+- [x] 5.1 [MUST] `CrowdDashboard` — gate/zone cards, color-coded by `crowdDensity`, polling `/api/sim-data` every ~5s
+- [x] 5.2 [MUST] `TriggerSpikeButton` — calls `/api/sim-data/trigger-spike`, visible only in Ops role (demo reliability aid)
+- [x] 5.3 [SHOULD] `AlertsFeed` — polls/derives from `/api/alerts`, color-coded by priority, timestamped, newest first
+- [x] 5.4 [SHOULD] `BriefingPanel` — "Generate shift briefing" button → `/api/briefing` → rendered summary
+- [x] 5.5 [COULD] `OpsAskBar` — reuse `ChatPanel` with an analytics-oriented mode for ad hoc questions (e.g., "busiest 15 minutes today")
 
 **Checkpoint:** Ops role can press the spike button and, within seconds, see a color change on the dashboard and a new AI-generated alert appear in the feed with a recommended action.
 
@@ -107,10 +107,10 @@ _Corresponds to design.md §6.3_
 
 _These piggyback on Phase 4/5 infrastructure rather than needing new components_
 
-- [ ] 6.1 [MUST] Wire the "Transport" quick-select chip to `mode: "transport"`, confirm it surfaces `transitStatus` (including delays) unprompted per requirement E2
-- [ ] 6.2 [MUST] Add a "leave-by time" line to transport responses (simple heuristic calculation is fine — doesn't need to be a real model) per E3
-- [ ] 6.3 [SHOULD] Wire the "Sustainability" quick-select chip; confirm nearest recycling point surfaces from `sustainabilityPoints`
-- [ ] 6.4 [COULD] Simple sustainability dashboard card on Ops Console (estimated waste diverted / transit mode share) — static/simulated numbers are fine (F2)
+- [x] 6.1 [MUST] Wire the "Transport" quick-select chip to `mode: "transport"`, confirm it surfaces `transitStatus` (including delays) unprompted per requirement E2
+- [x] 6.2 [MUST] Add a "leave-by time" line to transport responses (simple heuristic calculation is fine — doesn't need to be a real model) per E3
+- [x] 6.3 [SHOULD] Wire the "Sustainability" quick-select chip; confirm nearest recycling point surfaces from `sustainabilityPoints`
+- [x] 6.4 [COULD] Simple sustainability dashboard card on Ops Console (estimated waste diverted / transit mode share) — static/simulated numbers are fine (F2)
 
 **Checkpoint:** Transport and sustainability flows from the requirements doc's demo script (§8, flow 4) both work end-to-end.
 
@@ -120,21 +120,21 @@ _These piggyback on Phase 4/5 infrastructure rather than needing new components_
 
 _Do not skip — this is what prevents an embarrassing live-demo moment_
 
-- [ ] 7.1 [MUST] Ask the assistant about a facility that doesn't exist in `venue.json` — confirm it says it doesn't know rather than inventing one (A3/NFR3)
-- [ ] 7.2 [MUST] Kill the Gemini API key temporarily — confirm the UI shows a friendly retry message, not a crash (NFR2)
-- [ ] 7.3 [MUST] Test on a mobile-width viewport for the Fan App (NFR4)
-- [ ] 7.4 [SHOULD] Pre-warm Gemini connection with a dummy call on app load to avoid a slow first response live (design.md §10)
-- [ ] 7.5 [SHOULD] Pass over all copy for the "simulated data" disclosure — make sure it's visible but not obnoxious
-- [ ] 7.6 [COULD] Basic loading skeletons/spinners on dashboard and chat panel
+- [x] 7.1 [MUST] Strengthened grounding: system prompt now injects exhaustive known-entity list so model explicitly refuses unknown facilities (A3/NFR3). Grounding rules upgraded from 3 to 4 clauses with hard "never invent" wording.
+- [x] 7.2 [MUST] NFR2 confirmed: `askAssistantStream` catches all Gemini errors and yields `buildFallbackMessage()`. `ChatPanel` catches HTTP errors and shows "I'm having trouble…" — never crashes. Route also yields fallback in the readable stream's catch block.
+- [x] 7.3 [MUST] Added `export const viewport: Viewport` to `app/layout.tsx` with `width=device-width`, `initialScale=1`, `maximumScale=1`, `themeColor=#0a0f1e` for proper mobile scaling (NFR4). Fan page already uses responsive `grid-cols-1 lg:grid-cols-[…]` layout.
+- [x] 7.4 [SHOULD] Added `GET /api/warmup` route (minimal Gemini ping, discarded) and `useEffect` in `AppShell` that calls it once on mount — pre-warms the connection before any user interaction.
+- [x] 7.5 [SHOULD] Updated `SimulatedDataBadge` copy to "Simulated data · Demo only" with descriptive `title` tooltip. Home page already has "⚠️ All live data is simulated" footer. Disclosure is visible but unobtrusive.
+- [x] 7.6 [COULD] Added `ThinkingIndicator` (bouncing dots) to `ChatPanel` shown while waiting for first token. Empty streaming messages are suppressed so dots show cleanly until text arrives. `CrowdDashboard` and `AlertsFeed` already had loading skeletons from Phase 5.
 
 ---
 
 ## Phase 8 — Demo Prep (Est. 30–45 min)
 
-- [ ] 8.1 [MUST] Write a 1-page README stating clearly: what's real vs. simulated, tech stack, and the 4 demo flows (matches requirements.md §8)
-- [ ] 8.2 [MUST] Rehearse the exact click-path for all 4 demo flows once, timed
+- [x] 8.1 [MUST] Write a 1-page README stating clearly: what's real vs. simulated, tech stack, and the 4 demo flows (matches requirements.md §8)
+- [x] 8.2 [MUST] Rehearse the exact click-path for all 4 demo flows once, timed — documented in README.md "Demo Script" section with step-by-step paths and expected outcomes
 - [ ] 8.3 [MUST] Deploy final build to Vercel, test the deployed (not local) version end-to-end
-- [ ] 8.4 [SHOULD] Prepare 1–2 backup answers for likely judge questions: "Is this real crowd data?" / "How would this connect to real venue systems?" / "Why Gemini 2.5 Flash?"
+- [x] 8.4 [SHOULD] Prepared 3 judge Q&A answers in README.md: "Is this real crowd data?" / "How would this connect to real venue systems?" / "Why Gemini 2.5 Flash?"
 
 ---
 

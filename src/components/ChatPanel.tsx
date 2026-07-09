@@ -67,6 +67,8 @@ function getPlaceholder(mode: AssistantMode, language: string): string {
       return "Ask about trains, buses, rideshare pick-up…";
     case "translation":
       return "Type a message to translate for a fan…";
+    case "sustainability":
+      return "Ask about recycling, water refills, or green tips…";
     default:
       return "Ask about directions, facilities, accessibility…";
   }
@@ -87,6 +89,29 @@ function StreamingCursor() {
 }
 
 // ---------------------------------------------------------------------------
+// Thinking indicator (shown while waiting for first token — Task 7.6)
+// ---------------------------------------------------------------------------
+
+function ThinkingIndicator() {
+  return (
+    <div className="flex justify-start animate-fade-in" aria-label="Assistant is thinking">
+      <div
+        className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-purple-700
+                   flex items-center justify-center text-white text-sm mr-2 mt-1 shrink-0"
+        aria-hidden="true"
+      >
+        🏟
+      </div>
+      <div className="flex items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-2xl rounded-tl-sm px-4 py-3">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce [animation-delay:0ms]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce [animation-delay:150ms]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce [animation-delay:300ms]" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -101,14 +126,16 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
   ]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  // True while we've sent the request but haven't received any tokens yet
+  const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message or when thinking state changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isThinking]);
 
   // Update welcome message when language or role changes
   useEffect(() => {
@@ -151,6 +178,7 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
     ]);
     setInput("");
     setIsStreaming(true);
+    setIsThinking(true);
 
     try {
       const response = await fetch("/api/assistant", {
@@ -176,7 +204,10 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        fullText += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
+        // Hide thinking indicator as soon as first token arrives
+        if (isThinking && fullText.length > 0) setIsThinking(false);
         const snapshot = fullText;
         setMessages((prev) =>
           prev.map((m) =>
@@ -210,6 +241,7 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
       );
     } finally {
       setIsStreaming(false);
+      setIsThinking(false);
     }
   }
 
@@ -234,7 +266,10 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
         aria-live="polite"
         aria-atomic="false"
       >
-        {messages.map((msg) => (
+        {messages.map((msg) => {
+          // Skip empty streaming messages — ThinkingIndicator covers this state
+          if (msg.streaming && msg.text === "") return null;
+          return (
           <div
             key={msg.id}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
@@ -271,7 +306,10 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
               {msg.streaming && <StreamingCursor />}
             </div>
           </div>
-        ))}
+          );
+        })}
+        {/* Thinking indicator — shown while waiting for first token (Task 7.6) */}
+        {isThinking && <ThinkingIndicator />}
         <div ref={messagesEndRef} aria-hidden="true" />
       </div>
 

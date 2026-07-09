@@ -9,11 +9,12 @@
  *  - Typed failure response so the UI can show a friendly message, not a crash (NFR2).
  *
  * Modes implemented:
- *  "wayfinding"  — fan navigation, accessibility-aware           (tasks 2.1–2.3)
- *  "transport"   — transit status, leave-by times               (task 2.7)
- *  "ops_alert"   — structured JSON alert for ops dashboard       (task 2.6)
- *  "briefing"    — structured JSON shift summary for ops         (task 2.6)
- *  "translation" — two-way bilingual rendering for volunteers    (task 2.8)
+ *  "wayfinding"     — fan navigation, accessibility-aware           (tasks 2.1–2.3)
+ *  "transport"      — transit status, leave-by times               (task 2.7)
+ *  "ops_alert"      — structured JSON alert for ops dashboard       (task 2.6)
+ *  "briefing"       — structured JSON shift summary for ops         (task 2.6)
+ *  "translation"    — two-way bilingual rendering for volunteers    (task 2.8)
+ *  "sustainability" — recycling, water refill, green tips           (task 6.3)
  */
 
 import { GoogleGenAI } from "@google/genai";
@@ -199,6 +200,16 @@ function buildPrompt(params: AskAssistantParams): BuiltPrompt {
 
   const modeInstruction = buildModeInstruction(mode, userContext.language);
 
+  // Build exhaustive name list for hard grounding enforcement
+  const knownNames = venueData
+    ? [
+        ...venueData.gates.map((g) => `${g.name} (${g.label})`),
+        ...venueData.facilities.map((f) => f.name),
+        ...venueData.transitOptions.map((t) => t.line ?? t.mode),
+        ...venueData.sustainabilityPoints.map((s) => s.name),
+      ].join(", ")
+    : "none provided";
+
   const systemPrompt = `You are Stadium Copilot, an AI assistant for ${audienceLabel} at a simulated FIFA World Cup 2026 venue.
 
 CONTEXT (venue knowledge — treat as ground truth, do not invent beyond this):
@@ -214,8 +225,9 @@ USER CONTEXT:
 
 STRICT GROUNDING RULES:
 1. Only reference gates, facilities, transit options, and sustainability points that appear in the venue data above.
-2. If asked about something not listed in the data, say clearly that you don't have that information — never invent a gate, facility, or service.
+2. COMPLETE LIST of known entities at this venue: ${knownNames}. If the user asks about ANYTHING not on this list (e.g. "Gate F", "VIP lounge", "spa", "Team Entrance"), respond with: "I'm sorry, I don't have information about that facility or location in this venue's data." Never guess, never invent, never apologise and then describe it anyway.
 3. Never fabricate crowd figures, transit times, or incident details not present in the live conditions above.
+4. If you are genuinely unsure whether something exists, err on the side of "I don't have that information" rather than inventing a plausible-sounding answer.
 
 ${modeInstruction}`;
 
@@ -240,7 +252,7 @@ function buildVenueSection(venue: VenueData, mode: AssistantMode): string {
         .join("\n")
   );
 
-  if (mode === "wayfinding" || mode === "translation") {
+  if (mode === "wayfinding" || mode === "translation" || mode === "sustainability") {
     parts.push(
       "FACILITIES:\n" +
         venue.facilities
@@ -253,7 +265,7 @@ function buildVenueSection(venue: VenueData, mode: AssistantMode): string {
     parts.push(
       "SUSTAINABILITY POINTS:\n" +
         venue.sustainabilityPoints
-          .map((s) => `- ${s.name} (Near: ${s.nearGate}, Zone: ${s.zone}): ${s.description}`)
+          .map((s) => `- [${s.id}] ${s.name} (Type: ${s.type}, Near: ${s.nearGate}, Zone: ${s.zone}): ${s.description}`)
           .join("\n")
     );
   }
@@ -370,10 +382,21 @@ function buildModeInstruction(mode: AssistantMode, language: string): string {
     case "transport":
       return `INSTRUCTIONS (transport mode):
 - Respond in ${lang}.
-- Use only the transit options listed in the data. Do not invent routes or stop names.
-- Always include a "leave-by" time recommendation: estimate departure time as match-end minus travel time minus a 30-minute buffer for post-match crowd.
-- If any transit service is delayed in the live conditions, say so prominently and suggest the next-best alternative from the data.
-- Keep the response concise and practical — max 4–5 sentences.`;
+- Use only the transit options listed in the data. Do not invent routes, stop names, or travel times not in the data.
+- Always proactively state the current status of relevant transit services from the live conditions (on_time or delayed, with the delay note if any).
+- Always include a "leave-by" recommendation: assume the match ends at a typical 90-minute full-time plus stoppage (~95 min). Compute: leave-by = match end − travel time to destination − 30 min post-match crowd buffer. State the leave-by time clearly (e.g. "Leave by approximately 10:45 PM to avoid the post-match rush").
+- If any transit service is delayed, say so prominently at the top and suggest the best alternative from the data.
+- List the key transit options (train, bus, rideshare) that are relevant, with their gate proximity.
+- Keep the response concise and practical — max 5–6 sentences.`;
+
+    case "sustainability":
+      return `INSTRUCTIONS (sustainability mode):
+- Respond in ${lang}.
+- Your goal is to help the user make eco-friendly choices at the venue.
+- Always surface the nearest recycling station and water refill point from the sustainability points data — include the name, zone, and nearest gate even if the user didn't ask explicitly.
+- Mention the FIFA 2026 Zero-Waste initiative context where relevant.
+- If the user asks a general question, list all sustainability points and their locations briefly.
+- Keep the response friendly, practical, and encouraging — max 4–5 sentences.`;
 
     case "ops_alert":
       return `INSTRUCTIONS (ops_alert mode):
@@ -401,7 +424,7 @@ function buildModeInstruction(mode: AssistantMode, language: string): string {
 }
 - Be factual and specific. Reference actual gate IDs, incident types, and transit issues from the data.`;
 
-    case "translation":
+    case "translation": // falls through from sustainability above
       return `INSTRUCTIONS (translation / volunteer-assist mode):
 - The user message may be in any language.
 - Detect the source language and provide a response in BOTH ${lang} AND English, clearly labelled.
@@ -430,6 +453,9 @@ function languageLabel(code: string): string {
 }
 
 function buildFallbackMessage(mode: AssistantMode): string {
+  if (mode === "sustainability") {
+    return "I'm having trouble reaching the assistant right now. For recycling stations, look for the green bins near Gate A (North Plaza) and Gate B (East Plaza). Water refill points are available near Gate A.";
+  }
   if (mode === "ops_alert" || mode === "briefing") {
     // Return a valid JSON fallback so structured callers don't break
     return JSON.stringify({

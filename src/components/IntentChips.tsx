@@ -60,7 +60,7 @@ export const INTENT_CHIPS: ChipConfig[] = [
   },
   {
     label: "Sustainability",
-    mode: "wayfinding",
+    mode: "sustainability",
     icon: "🌿",
     description: "Recycling stations, water refill points, and green tips",
     idleStyle:

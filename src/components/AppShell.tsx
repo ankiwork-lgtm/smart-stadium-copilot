@@ -6,10 +6,13 @@
  * and SimulatedDataBadge. Wraps every page.
  *
  * Task 4.1 [MUST]
+ * Task 7.4 [SHOULD] — pre-warms Gemini on first mount so the first real
+ *                      assistant call is fast during a live demo.
  */
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useUserContext } from "./UserContextProvider";
 import { SimulatedDataBadge } from "./SimulatedDataBadge";
 import type { UserRole, Language } from "../../lib/types";
@@ -37,6 +40,14 @@ const LANGUAGES: { value: Language; label: string }[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { userContext, setUserContext } = useUserContext();
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Pre-warm the Gemini connection once per session (Task 7.4)
+  useEffect(() => {
+    fetch("/api/warmup").catch(() => {
+      // Best-effort — silently ignore if warmup fails
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen flex flex-col bg-stadium-gradient text-white">
@@ -68,9 +79,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Page tabs */}
           <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-1">
-            <Link
-              href="/fan"
+            <button
               id="nav-fan-link"
+              onClick={() => {
+                setUserContext((prev) => ({ ...prev, role: "fan" }));
+                router.push("/fan");
+              }}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200 ${
                 pathname?.startsWith("/fan")
                   ? "bg-blue-600 text-white shadow-md shadow-blue-900/40"
@@ -78,10 +92,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               }`}
             >
               Fan App
-            </Link>
-            <Link
-              href="/ops"
+            </button>
+            <button
               id="nav-ops-link"
+              onClick={() => {
+                setUserContext((prev) => ({ ...prev, role: "ops_staff" }));
+                router.push("/ops");
+              }}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200 ${
                 pathname?.startsWith("/ops")
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/40"
@@ -89,7 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               }`}
             >
               Ops Console
-            </Link>
+            </button>
           </div>
 
           {/* Controls */}
@@ -104,9 +121,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <button
                   key={r.value}
                   id={`role-btn-${r.value}`}
-                  onClick={() =>
-                    setUserContext((prev) => ({ ...prev, role: r.value }))
-                  }
+                  onClick={() => {
+                    setUserContext((prev) => ({ ...prev, role: r.value }));
+                    // Navigate to the matching page for fan/ops roles
+                    if (r.value === "fan") router.push("/fan");
+                    else if (r.value === "ops_staff") router.push("/ops");
+                  }}
                   aria-pressed={userContext.role === r.value}
                   title={`Switch to ${r.label} mode`}
                   className={`px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
