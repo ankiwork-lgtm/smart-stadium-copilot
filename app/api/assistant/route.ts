@@ -38,6 +38,9 @@ const VALID_MODES: AssistantMode[] = [
 
 const VALID_ROLES = ["fan", "ops_staff", "volunteer"] as const;
 const VALID_LANGUAGES = ["en", "es", "fr"] as const;
+const VALID_ACCESSIBILITY_NEEDS = ["mobility", "vision", "hearing", "sensory"] as const;
+
+const MAX_USER_MESSAGE_CHARS = 2000;
 
 const venue = venueJson as VenueData;
 
@@ -70,6 +73,13 @@ export async function POST(req: NextRequest): Promise<NextResponse | Response> {
     );
   }
 
+  if (userMessage.length > MAX_USER_MESSAGE_CHARS) {
+    return NextResponse.json(
+      { error: `userMessage must not exceed ${MAX_USER_MESSAGE_CHARS} characters.` },
+      { status: 400 }
+    );
+  }
+
   if (!VALID_MODES.includes(mode as AssistantMode)) {
     return NextResponse.json(
       { error: `mode must be one of: ${VALID_MODES.join(", ")}.` },
@@ -98,6 +108,17 @@ export async function POST(req: NextRequest): Promise<NextResponse | Response> {
       { error: `userContext.language must be one of: ${VALID_LANGUAGES.join(", ")}.` },
       { status: 400 }
     );
+  }
+
+  if (Array.isArray(ctx.accessibilityNeeds)) {
+    for (const need of ctx.accessibilityNeeds) {
+      if (!VALID_ACCESSIBILITY_NEEDS.includes(need as (typeof VALID_ACCESSIBILITY_NEEDS)[number])) {
+        return NextResponse.json(
+          { error: `accessibilityNeeds contains invalid value: "${need}". Valid values: ${VALID_ACCESSIBILITY_NEEDS.join(", ")}.` },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   const validatedContext: UserContext = {

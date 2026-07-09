@@ -10,12 +10,15 @@
  * Tasks: 4.1–4.9 assembled here.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ChatPanel } from "../../src/components/ChatPanel";
 import { VenueMap } from "../../src/components/VenueMap";
 import { IntentChips, type ChipConfig } from "../../src/components/IntentChips";
 import { AccessibilityPrefsModal } from "../../src/components/AccessibilityPrefsModal";
 import type { AssistantMode } from "../../lib/types";
+
+// Session storage key for first-visit modal (must match AccessibilityPrefsModal)
+const A11Y_SESSION_KEY = "stadium-a11y-modal-shown";
 
 // ---------------------------------------------------------------------------
 // All IDs that might appear in an assistant response
@@ -80,6 +83,19 @@ export default function FanPage() {
   const [highlightedIds, setHighlightedIds] = useState<string[]>([]);
   const [showA11yModal, setShowA11yModal] = useState(false);
 
+  // Show accessibility modal on first visit
+  useEffect(() => {
+    try {
+      const shown = sessionStorage.getItem(A11Y_SESSION_KEY);
+      if (!shown) {
+        setShowA11yModal(true);
+        sessionStorage.setItem(A11Y_SESSION_KEY, "1");
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
   const handleChipSelect = useCallback((chip: ChipConfig) => {
     setActiveChip(chip.label);
     setActiveMode(chip.mode);
@@ -92,9 +108,6 @@ export default function FanPage() {
 
   return (
     <>
-      {/* First-visit accessibility modal */}
-      <AccessibilityPrefsModal onClose={() => setShowA11yModal(false)} />
-
       <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-4"
            style={{ height: "calc(100vh - 3.5rem)" }}>
 
@@ -184,10 +197,7 @@ export default function FanPage() {
       </div>
 
       {showA11yModal && (
-        <AccessibilityPrefsModal
-          forceOpen
-          onClose={() => setShowA11yModal(false)}
-        />
+        <AccessibilityPrefsModal onClose={() => setShowA11yModal(false)} />
       )}
     </>
   );

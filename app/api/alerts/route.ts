@@ -40,10 +40,13 @@ const venue = venueJson as VenueData;
 // ---------------------------------------------------------------------------
 // In-memory dedup — tracks alert IDs already generated this server session
 // so we don't re-call Gemini for the same breach on every poll.
+// Uses a cooldown window to prevent re-alerting on oscillating breaches.
 // ---------------------------------------------------------------------------
 
 const _generatedAlerts = new Map<string, Alert>(); // alertId → Alert
-const _seenBreachIds = new Set<string>();           // breachId → already processed
+const _seenBreachIds = new Map<string, number>();  // breachId → timestamp of last Gemini call
+
+const ALERT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
 // ---------------------------------------------------------------------------
 // Types
@@ -129,12 +132,16 @@ export async function GET(): Promise<NextResponse> {
       });
     }
 
-    // --- 2. Generate AI alerts for new breaches only ---
-    const newBreaches = breaches.filter((b) => !_seenBreachIds.has(b.id));
+    // --- 2. Generate AI alerts for new breaches only (respecting cooldown window) ---
+    const now = Date.now();
+    const newBreaches = breaches.filter((b) => {
+      const lastAlerted = _seenBreachIds.get(b.id);
+      return lastAlerted === undefined || (now - lastAlerted) > ALERT_COOLDOWN_MS;
+    });
 
     await Promise.all(
       newBreaches.map(async (breach) => {
-        _seenBreachIds.add(breach.id);
+        _seenBreachIds.set(breach.id, now);
 
         const result = await askAssistantStructured({
           userMessage: breach.description,
@@ -162,11 +169,11 @@ export async function GET(): Promise<NextResponse> {
     );
 
     // --- 3. Prune alerts for breaches that are no longer active ---
+    // Note: _seenBreachIds retains the timestamp so cooldown continues to apply
     const activeBreachIds = new Set(breaches.map((b) => b.id));
     for (const id of _generatedAlerts.keys()) {
       if (!activeBreachIds.has(id)) {
         _generatedAlerts.delete(id);
-        _seenBreachIds.delete(id);
       }
     }
 

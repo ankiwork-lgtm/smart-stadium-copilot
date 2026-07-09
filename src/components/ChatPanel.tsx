@@ -199,6 +199,7 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
+      let firstTokenReceived = false;
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -207,7 +208,10 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
         const chunk = decoder.decode(value, { stream: true });
         fullText += chunk;
         // Hide thinking indicator as soon as first token arrives
-        if (isThinking && fullText.length > 0) setIsThinking(false);
+        if (!firstTokenReceived) {
+          setIsThinking(false);
+          firstTokenReceived = true;
+        }
         const snapshot = fullText;
         setMessages((prev) =>
           prev.map((m) =>
