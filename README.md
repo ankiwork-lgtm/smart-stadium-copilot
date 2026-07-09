@@ -13,7 +13,7 @@ Smart Stadium Companion is a full-stack Next.js application that puts **Google G
 |---|---|
 | **Fan** | AI wayfinding, transport planning, accessibility guidance, sustainability tips — all streamed in real time, available in English / Spanish / French |
 | **Ops Staff** | Live crowd dashboard with AI-generated alerts, one-click congestion spike simulation, and AI shift-briefing generation |
-| **Volunteer** | Two-way bilingual translation assist for any language pairing |
+| **Volunteer** | Role toggle in the nav bar switches the chat into volunteer-assist mode — adapted welcome messages and "Volunteer assist response" headers on every AI reply |
 
 ---
 
@@ -44,6 +44,7 @@ The **simulated-data badge** is always visible in the app so judges and users ar
 | Styling | **Tailwind CSS 3** | Rapid dark-theme UI, responsive grid |
 | State | **React 19 Context** (`UserContextProvider`) | Lightweight — no Redux needed for this scope; persisted to `localStorage` |
 | Data | **Static JSON** + **module-level singleton** (`simEngine.ts`) | No database required; server-process state survives between polls |
+| Testing | **Vitest 4** | Unit tests for lib and API route logic; no real Gemini calls made in tests |
 | Deploy | **Vercel** | Zero-config Next.js deploy, edge-friendly |
 
 ---
@@ -52,7 +53,12 @@ The **simulated-data badge** is always visible in the app so judges and users ar
 
 ```
 smart-stadium-copilot/
-├── app/                        # Next.js API routes (server-side only)
+├── app/                        # Next.js App Router (root — active)
+│   ├── layout.tsx              # Root layout (imports UserContextProvider from src/)
+│   ├── page.tsx                # Landing page (Fan App / Ops Console links)
+│   ├── globals.css             # Global styles
+│   ├── fan/                    # Fan App route (page.tsx + layout.tsx)
+│   ├── ops/                    # Ops Console route (page.tsx + layout.tsx)
 │   └── api/
 │       ├── assistant/          # POST — streaming Gemini chat
 │       ├── sim-data/           # GET — advance simulation + return LiveState
@@ -60,15 +66,11 @@ smart-stadium-copilot/
 │       ├── alerts/             # GET — threshold-breach alerts (AI-generated)
 │       ├── briefing/           # POST — AI shift briefing
 │       ├── venue/              # GET — static venue.json
-│       └── warmup/             # GET — pre-warm Gemini connection
+│       ├── warmup/             # GET — pre-warm Gemini connection
+│       └── __tests__/          # Vitest unit tests for API routes
 ├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── page.tsx            # Landing page (Fan App / Ops Console links)
-│   │   ├── layout.tsx          # Root layout
-│   │   ├── globals.css         # Global styles
-│   │   ├── fan/                # Fan App route (page.tsx + layout.tsx)
-│   │   └── ops/                # Ops Console route (page.tsx + layout.tsx)
-│   └── components/             # All React components
+│   ├── app/                    # Mirrors app/ — kept for @/* alias resolution
+│   └── components/             # All React components (imported via @/components/…)
 │       ├── AppShell.tsx        # Nav bar, role toggle, language picker
 │       ├── ChatPanel.tsx       # Streaming chat UI (shared across fan + ops)
 │       ├── VenueMap.tsx        # SVG map with highlighted pins
@@ -83,7 +85,8 @@ smart-stadium-copilot/
 ├── lib/
 │   ├── gemini.ts               # All Gemini calls (askAssistant, stream, structured)
 │   ├── simEngine.ts            # Simulation tick engine + triggerSpike()
-│   └── types.ts                # Shared TypeScript types (source of truth)
+│   ├── types.ts                # Shared TypeScript types (source of truth)
+│   └── __tests__/              # Vitest unit tests for lib modules
 ├── data/
 │   └── venue.json              # Static venue data (gates, facilities, transit, sustainability)
 ├── scripts/
@@ -129,6 +132,40 @@ Open [http://localhost:3000](http://localhost:3000).
 npm run build
 npm start
 ```
+
+---
+
+## 🧪 Testing
+
+The project uses **Vitest** for unit tests. All tests mock external dependencies — no real Gemini API calls are made.
+
+### Test files
+
+| File | What it covers |
+|---|---|
+| `lib/__tests__/gemini.test.ts` | Gemini wrapper functions (`askAssistantStructured`, stream helpers) |
+| `lib/__tests__/simEngine.test.ts` | Simulation tick logic, `triggerSpike()`, state transitions |
+| `lib/__tests__/venueData.test.ts` | Venue JSON schema validation and data integrity |
+| `app/api/__tests__/alerts.test.ts` | Alert breach detection, priority ordering, Gemini parse-error fallback |
+| `app/api/__tests__/assistant.test.ts` | Streaming assistant route behaviour and error handling |
+
+### Commands
+
+```bash
+# Run all tests once (unit + smoke)
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run only the Gemini smoke-test (requires GEMINI_API_KEY)
+npm run test:smoke
+```
+
+> **Note:** `npm test` runs Vitest and then `test:smoke`. The smoke-test is automatically skipped if `GEMINI_API_KEY` is not set, so CI pipelines without an API key work fine.
 
 ---
 
