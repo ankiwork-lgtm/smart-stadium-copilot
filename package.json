@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:smoke",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:smoke": "node -e \"const {execSync}=require('child_process');if(!process.env.GEMINI_API_KEY){console.log('test:smoke skipped — GEMINI_API_KEY not set');process.exit(0)}execSync('npx tsx scripts/hello-gemini.ts',{stdio:'inherit'})\""
   },
   "dependencies": {
     "@google/genai": "^1.0.1",
