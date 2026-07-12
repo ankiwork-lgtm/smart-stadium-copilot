@@ -31,15 +31,15 @@ import type { VenueData } from "../../../lib/types";
 const venue = venueJson as VenueData;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Optional language override in the body
+  // Optional language override in the body — defaults to "en" if body is absent or malformed.
   let language: "en" | "es" | "fr" = "en";
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json();
     if (body?.language === "es" || body?.language === "fr") {
       language = body.language;
     }
   } catch {
-    // ignore — language defaults to "en"
+    // Malformed or missing body — language defaults to "en". Not an error.
   }
 
   try {

@@ -147,3 +147,19 @@ export type VenueData = {
   transitOptions: TransitOption[];
   sustainabilityPoints: SustainabilityPoint[];
 };
+
+// ---------------------------------------------------------------------------
+// Alert types — shared between /api/alerts route and AlertsFeed component
+// ---------------------------------------------------------------------------
+
+export type AlertPriority = "low" | "medium" | "high";
+
+export type Alert = {
+  id: string;
+  timestamp: string; // ISO 8601
+  priority: AlertPriority;
+  summary: string;
+  recommendedAction: string;
+  source: string;
+  rawText?: string; // present only when JSON parse failed
+};

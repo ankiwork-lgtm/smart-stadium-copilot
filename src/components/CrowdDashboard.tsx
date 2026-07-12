@@ -8,8 +8,8 @@
  * Task 5.1 [MUST]
  */
 
-import { useEffect, useRef, useState } from "react";
-import type { LiveState, CrowdLevel } from "../../lib/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { LiveState, CrowdLevel, VenueData } from "../../lib/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,6 +102,7 @@ type Props = {
 
 export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Props) {
   const [liveState, setLiveState] = useState<LiveState | null>(null);
+  const [venueData, setVenueData] = useState<VenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -110,7 +111,7 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fetchInProgressRef = useRef(false);
 
-  const fetchSimData = async () => {
+  const fetchSimData = useCallback(async () => {
     if (fetchInProgressRef.current) return;
     fetchInProgressRef.current = true;
     try {
@@ -128,7 +129,19 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
       setLoading(false);
       fetchInProgressRef.current = false;
     }
-  };
+  // fetchSimData only touches refs and stable state setters — no external deps.
+  // useCallback gives the polling effect a stable reference to depend on.
+  }, []);
+
+  // Fetch venue data once on mount to drive zone/transit label lookups
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/venue")
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: VenueData) => { if (!cancelled) setVenueData(data); })
+      .catch((err) => console.error("[CrowdDashboard] venue fetch error:", err));
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const tick = () => {
@@ -143,8 +156,7 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
       if (intervalRef.current) clearInterval(intervalRef.current);
       document.removeEventListener("visibilitychange", tick);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchSimData]);
 
   const handleTriggerSpike = async () => {
     setTriggeringSpike(true);
@@ -186,20 +198,34 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
     );
   }
 
-  // Build gate card list from live state
+  // Build lookup maps from venue data so gate cards and transit labels
+  // reflect venue.json rather than hardcoded values.
+  const gateById = Object.fromEntries(
+    (venueData?.gates ?? []).map((g) => [g.id, g])
+  );
+  const transitById = Object.fromEntries(
+    (venueData?.transitOptions ?? []).map((t) => [t.id, t])
+  );
+
+  // Emoji prefix per transit mode
+  const TRANSIT_MODE_ICON: Record<string, string> = {
+    train: "🚆",
+    bus: "🚌",
+    rideshare: "🚗",
+  };
+
+  // Build gate card list from live state, enriched with venue data
   const gates: GateCard[] = liveState
-    ? Object.entries(liveState.crowdDensity).map(([id, level]) => ({
-        id,
-        name: id.replace("gate-", "Gate ").toUpperCase(),
-        zone:
-          id === "gate-a" ? "North" :
-          id === "gate-b" ? "East" :
-          id === "gate-c" ? "South" :
-          id === "gate-d" ? "West" :
-          id === "gate-e" ? "VIP / Media" : "Zone",
-        level,
-        accessible: id !== "gate-c",
-      }))
+    ? Object.entries(liveState.crowdDensity).map(([id, level]) => {
+        const gate = gateById[id];
+        return {
+          id,
+          name: gate?.name ?? id.replace("gate-", "Gate ").toUpperCase(),
+          zone: gate?.zone ?? "Zone",
+          level,
+          accessible: gate ? gate.accessible : false,
+        };
+      })
     : [];
 
   const criticalCount = gates.filter((g) => g.level === "critical").length;
@@ -277,11 +303,10 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {Object.entries(liveState.transitStatus).map(([id, entry]) => {
               const cfg = TRANSIT_STATUS_CONFIG[entry.status];
-              const label =
-                id === "train-1" ? "🚆 Blue Line" :
-                id === "bus-1" ? "🚌 Route 42" :
-                id === "bus-2" ? "🚌 Shuttle" :
-                "🚗 Rideshare";
+              const transit = transitById[id];
+              const icon = transit ? (TRANSIT_MODE_ICON[transit.mode] ?? "🚌") : "🚌";
+              const displayName = transit ? (transit.line ?? transit.mode) : id;
+              const label = `${icon} ${displayName}`;
               return (
                 <div key={id} className="flex items-center gap-2 min-w-0">
                   <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />

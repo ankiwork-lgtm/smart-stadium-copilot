@@ -8,23 +8,8 @@
  * Task 5.3 [SHOULD]
  */
 
-import { useEffect, useRef, useState } from "react";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type AlertPriority = "low" | "medium" | "high";
-
-type Alert = {
-  id: string;
-  timestamp: string;
-  priority: AlertPriority;
-  summary: string;
-  recommendedAction: string;
-  source: string;
-  rawText?: string;
-};
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Alert, AlertPriority } from "../../lib/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -94,7 +79,7 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
   const prevHighCountRef = useRef(0);
   const fetchInProgressRef = useRef(false);
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     if (fetchInProgressRef.current) return;
     fetchInProgressRef.current = true;
     setFetching(true);
@@ -119,7 +104,9 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
       setFetching(false);
       fetchInProgressRef.current = false;
     }
-  };
+  // fetchAlerts only touches refs and state setters (all stable), so the dep
+  // array is empty. useCallback gives the effect a stable reference to depend on.
+  }, [onNewHighAlert]);
 
   useEffect(() => {
     const tick = () => {
@@ -134,8 +121,7 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", tick);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchAlerts]);
 
   // ---------------------------------------------------------------------------
   // Render

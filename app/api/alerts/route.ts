@@ -33,7 +33,7 @@ import { NextResponse } from "next/server";
 import { getState } from "../../../lib/simEngine";
 import { askAssistantStructured } from "../../../lib/gemini";
 import venueJson from "../../../data/venue.json";
-import type { VenueData, CrowdLevel } from "../../../lib/types";
+import type { VenueData, CrowdLevel, Alert, AlertPriority } from "../../../lib/types";
 
 const venue = venueJson as VenueData;
 
@@ -48,21 +48,13 @@ const _seenBreachIds = new Map<string, number>();  // breachId → timestamp of 
 
 const ALERT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
+// _seenBreachIds entries are pruned once the breach is inactive AND the cooldown
+// has fully expired (2× window), preventing unbounded Map growth over long sessions.
+const SEEN_BREACH_GC_MS = ALERT_COOLDOWN_MS * 2;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-type AlertPriority = "low" | "medium" | "high";
-
-type Alert = {
-  id: string;
-  timestamp: string;
-  priority: AlertPriority;
-  summary: string;
-  recommendedAction: string;
-  source: string;
-  rawText?: string;
-};
 
 type Breach = {
   id: string;
@@ -168,12 +160,19 @@ export async function GET(): Promise<NextResponse> {
       })
     );
 
-    // --- 3. Prune alerts for breaches that are no longer active ---
-    // Note: _seenBreachIds retains the timestamp so cooldown continues to apply
+    // --- 3. Prune alerts and seen-breach entries for inactive breaches ---
+    // _generatedAlerts is pruned immediately when the breach clears.
+    // _seenBreachIds is pruned only after SEEN_BREACH_GC_MS so the cooldown
+    // window is respected even for oscillating breaches.
     const activeBreachIds = new Set(breaches.map((b) => b.id));
     for (const id of _generatedAlerts.keys()) {
       if (!activeBreachIds.has(id)) {
         _generatedAlerts.delete(id);
+      }
+    }
+    for (const [id, lastAlerted] of _seenBreachIds.entries()) {
+      if (!activeBreachIds.has(id) && (now - lastAlerted) > SEEN_BREACH_GC_MS) {
+        _seenBreachIds.delete(id);
       }
     }
 

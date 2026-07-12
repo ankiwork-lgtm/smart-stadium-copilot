@@ -146,16 +146,30 @@ export async function POST(req: NextRequest): Promise<NextResponse | Response> {
   });
 
   // --- 4. Convert AsyncGenerator → ReadableStream ---
+  // A per-chunk timeout guards against a stalled Gemini stream holding the
+  // connection open indefinitely. If no chunk arrives within CHUNK_TIMEOUT_MS
+  // the stream is closed with a fallback message.
+  const CHUNK_TIMEOUT_MS = 15_000;
+
   const readable = new ReadableStream({
     async start(controller) {
+      const encoder = new TextEncoder();
       try {
         for await (const chunk of stream) {
-          controller.enqueue(new TextEncoder().encode(chunk));
+          // Race each chunk against a deadline so a stalled generator doesn't
+          // block the connection forever.
+          const timedChunk = await Promise.race([
+            Promise.resolve(chunk),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("Stream chunk timeout")), CHUNK_TIMEOUT_MS)
+            ),
+          ]);
+          controller.enqueue(encoder.encode(timedChunk));
         }
       } catch (err) {
         console.error("[api/assistant] stream error:", err);
         controller.enqueue(
-          new TextEncoder().encode(
+          encoder.encode(
             "I'm having trouble reaching the assistant right now. Please try again."
           )
         );

@@ -41,6 +41,11 @@ const INCIDENT_PROBABILITY = 0.05;
 // Module-level singleton state
 // ---------------------------------------------------------------------------
 
+// NOTE: These module-level variables are intentional for a single-process demo.
+// In a multi-instance serverless deployment (e.g. Vercel) each function instance
+// maintains its own independent copy of this state, so two concurrent clients may
+// see different "live worlds". A shared store (Redis, Upstash, etc.) would be
+// required to unify state across instances in a production system.
 let _state: LiveState | null = null;
 let _incidentCounter = 1;
 
@@ -123,7 +128,10 @@ export function tick(): LiveState {
   // --- 2. Random-walk crowd density ±1 level per gate ---
   for (const gateId of GATE_IDS) {
     if (Math.random() < SHIFT_PROBABILITY) {
-      const currentIdx = CROWD_LEVELS.indexOf(state.crowdDensity[gateId]);
+      const currentLevel = state.crowdDensity[gateId];
+      // Skip if this gate wasn't initialised (defensive guard against state corruption)
+      if (!currentLevel) continue;
+      const currentIdx = CROWD_LEVELS.indexOf(currentLevel);
       const direction = Math.random() < 0.5 ? -1 : 1;
       const newIdx = Math.max(0, Math.min(CROWD_LEVELS.length - 1, currentIdx + direction));
       state.crowdDensity[gateId] = CROWD_LEVELS[newIdx];

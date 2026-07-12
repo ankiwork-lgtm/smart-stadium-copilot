@@ -209,8 +209,8 @@ function buildPrompt(params: AskAssistantParams): BuiltPrompt {
     ? [
         ...venueData.gates.map((g) => `${g.name} (${g.label})`),
         ...venueData.facilities.map((f) => f.name),
-        ...venueData.transitOptions.map((t) => t.line ?? t.mode),
-        ...venueData.sustainabilityPoints.map((s) => s.name),
+        ...(venueData.transitOptions?.map((t) => t.line ?? t.mode) ?? []),
+        ...(venueData.sustainabilityPoints?.map((s) => s.name) ?? []),
       ].join(", ")
     : "none provided";
 
@@ -458,7 +458,9 @@ function languageLabel(code: string): string {
 
 function buildFallbackMessage(mode: AssistantMode): string {
   if (mode === "sustainability") {
-    return "I'm having trouble reaching the assistant right now. For recycling stations, look for the green bins near Gate A (North Plaza) and Gate B (East Plaza). Water refill points are available near Gate A.";
+    // Generic message — venue-specific locations are not hardcoded here to
+    // avoid serving stale data if venue.json is updated.
+    return "I'm having trouble reaching the assistant right now. For recycling stations and water refill points, please check the venue map or ask a staff member at any gate.";
   }
   if (mode === "ops_alert" || mode === "briefing") {
     // Return a valid JSON fallback so structured callers don't break

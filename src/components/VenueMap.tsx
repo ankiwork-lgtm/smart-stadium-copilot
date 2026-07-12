@@ -65,13 +65,22 @@ export function VenueMap({ highlightedIds = [] }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/venue")
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: VenueData) => {
-        setVenueData(data);
-        setLoading(false);
+        if (!cancelled) {
+          setVenueData(data);
+          setLoading(false);
+        }
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("[VenueMap] venue fetch error:", err);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
   }, []);
 
   // -------------------------------------------------------------------------
