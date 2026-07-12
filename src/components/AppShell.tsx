@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     fetch("/api/warmup").catch(() => {
       // Best-effort — silently ignore if warmup fails
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-stadium-gradient text-white">

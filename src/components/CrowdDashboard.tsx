@@ -118,8 +118,10 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
       const res = await fetch("/api/sim-data");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: LiveState = await res.json();
-      prevStateRef.current = liveState;
-      setLiveState(data);
+      setLiveState((prev) => {
+        prevStateRef.current = prev;
+        return data;
+      });
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
