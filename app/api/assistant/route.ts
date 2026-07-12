@@ -158,12 +158,18 @@ export async function POST(req: NextRequest): Promise<NextResponse | Response> {
         for await (const chunk of stream) {
           // Race each chunk against a deadline so a stalled generator doesn't
           // block the connection forever.
+          let timeoutId: NodeJS.Timeout | undefined;
           const timedChunk = await Promise.race([
             Promise.resolve(chunk),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error("Stream chunk timeout")), CHUNK_TIMEOUT_MS)
-            ),
-          ]);
+            new Promise<never>((_, reject) => {
+              timeoutId = setTimeout(
+                () => reject(new Error("Stream chunk timeout")),
+                CHUNK_TIMEOUT_MS
+              );
+            }),
+          ]).finally(() => {
+            if (timeoutId) clearTimeout(timeoutId);
+          });
           controller.enqueue(encoder.encode(timedChunk));
         }
       } catch (err) {

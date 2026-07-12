@@ -105,6 +105,7 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
   const [venueData, setVenueData] = useState<VenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [venueError, setVenueError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [triggeringSpike, setTriggeringSpike] = useState(false);
   const prevStateRef = useRef<LiveState | null>(null);
@@ -141,7 +142,10 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
     fetch("/api/venue")
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: VenueData) => { if (!cancelled) setVenueData(data); })
-      .catch((err) => console.error("[CrowdDashboard] venue fetch error:", err));
+      .catch((err) => {
+        console.error("[CrowdDashboard] venue fetch error:", err);
+        if (!cancelled) setVenueError("Could not load venue details. Some labels may be generic.");
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -223,9 +227,9 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
         return {
           id,
           name: gate?.name ?? id.replace("gate-", "Gate ").toUpperCase(),
-          zone: gate?.zone ?? "Zone",
+          zone: gate?.zone ?? "Unknown",
           level,
-          accessible: gate ? gate.accessible : false,
+          accessible: gate?.accessible ?? false,
         };
       })
     : [];
@@ -368,6 +372,9 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
 
       {error && (
         <p className="text-xs text-orange-400/70 text-center">{error}</p>
+      )}
+      {venueError && (
+        <p className="text-xs text-amber-400/70 text-center">{venueError}</p>
       )}
     </div>
   );

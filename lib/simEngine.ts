@@ -156,7 +156,7 @@ export function tick(): LiveState {
   // --- 4. Occasional scripted incident ---
   if (Math.random() < INCIDENT_PROBABILITY) {
     const incident = randomIncident();
-    state.incidents = [incident, ...state.incidents.filter((i) => i.resolved)];
+    state.incidents = [incident, ...state.incidents.filter((i) => !i.resolved)];
     appendLog(state, "incident", incident.description);
   }
 

@@ -133,8 +133,6 @@ export async function GET(): Promise<NextResponse> {
 
     await Promise.all(
       newBreaches.map(async (breach) => {
-        _seenBreachIds.set(breach.id, now);
-
         const result = await askAssistantStructured({
           userMessage: breach.description,
           userContext: { role: "ops_staff", language: "en" },
@@ -157,13 +155,14 @@ export async function GET(): Promise<NextResponse> {
         };
 
         _generatedAlerts.set(breach.id, alert);
+        _seenBreachIds.set(breach.id, now);
       })
     );
 
     // --- 3. Prune alerts and seen-breach entries for inactive breaches ---
     // _generatedAlerts is pruned immediately when the breach clears.
-    // _seenBreachIds is pruned only after SEEN_BREACH_GC_MS so the cooldown
-    // window is respected even for oscillating breaches.
+    // _seenBreachIds is also cleared immediately so reactivating breaches get re-alerted,
+    // but only if they stay clear long enough to be pruned from _seenBreachIds.
     const activeBreachIds = new Set(breaches.map((b) => b.id));
     for (const id of _generatedAlerts.keys()) {
       if (!activeBreachIds.has(id)) {
@@ -171,7 +170,7 @@ export async function GET(): Promise<NextResponse> {
       }
     }
     for (const [id, lastAlerted] of _seenBreachIds.entries()) {
-      if (!activeBreachIds.has(id) && (now - lastAlerted) > SEEN_BREACH_GC_MS) {
+      if (!activeBreachIds.has(id)) {
         _seenBreachIds.delete(id);
       }
     }

@@ -14,7 +14,7 @@
  * Task 4.3 [MUST] + Task 4.4 [MUST] + Task 4.9 [COULD]
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useUserContext } from "./UserContextProvider";
 import type { AssistantMode } from "../../lib/types";
 
@@ -159,7 +159,7 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
   // Send message
   // ---------------------------------------------------------------------------
 
-  async function sendMessage(text: string) {
+  const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
 
@@ -227,7 +227,11 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
       );
       onAssistantReply?.(fullText);
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === "AbortError") return;
+      if (err instanceof Error && err.name === "AbortError") {
+        // Remove the empty placeholder on abort
+        setMessages((prev) => prev.filter((m) => m.id !== assistantMsgId));
+        return;
+      }
 
       console.error("[ChatPanel] fetch error:", err);
       setMessages((prev) =>
@@ -246,7 +250,7 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
       setIsStreaming(false);
       setIsThinking(false);
     }
-  }
+  }, [isStreaming, userContext, mode, onAssistantReply]);
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {

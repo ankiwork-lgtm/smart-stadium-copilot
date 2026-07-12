@@ -9,7 +9,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Alert, AlertPriority } from "../../lib/types";
+import type { Alert, AlertPriority, VenueData } from "../../lib/types";
+import venueJson from "../../data/venue.json";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,11 +53,18 @@ function timeAgo(isoString: string): string {
 }
 
 function sourceLabel(source: string): string {
-  if (source.startsWith("gate-")) return source.replace("gate-", "Gate ").toUpperCase();
-  if (source === "train-1") return "Blue Line";
-  if (source === "bus-1") return "Route 42";
-  if (source === "bus-2") return "Shuttle";
-  if (source === "rideshare-1") return "Rideshare";
+  const venue = venueJson as VenueData;
+
+  if (source.startsWith("gate-")) {
+    const gate = venue.gates.find((g) => g.id === source);
+    return gate?.name ?? source.replace("gate-", "Gate ").toUpperCase();
+  }
+
+  const transit = venue.transitOptions.find((t) => t.id === source);
+  if (transit) {
+    return transit.line ?? transit.mode;
+  }
+
   if (source.startsWith("incident-")) return "Incident";
   return source;
 }

@@ -144,10 +144,16 @@ export async function askAssistantStructured(
   const result = await askAssistant(params);
 
   if (!result.success) {
-    return {
-      rawText: result.fallbackMessage,
-      parseError: true,
-    };
+    // Fallback message is already JSON for ops_alert/briefing modes; parse it.
+    try {
+      const parsed = JSON.parse(result.fallbackMessage) as StructuredOpsOutput;
+      return parsed;
+    } catch {
+      return {
+        rawText: result.fallbackMessage,
+        parseError: true,
+      };
+    }
   }
 
   // Strip any markdown code fences the model may add

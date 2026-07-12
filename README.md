@@ -17,6 +17,42 @@ Smart Stadium Companion is a full-stack Next.js application that puts **Google G
 
 ---
 
+## 🎯 Approach & Design Rationale
+
+### Vertical choice
+Stadium operations and fan experience at a mega-event (FIFA World Cup 2026) is a high-stakes, high-volume, multilingual environment. It creates a natural stress-test for every AI capability on show: grounded factual retrieval, real-time context injection, multilingual generation, structured JSON output for ops workflows, and streaming UX for time-sensitive queries. Three distinct user roles (Fan, Ops Staff, Volunteer) let a single demo surface all of those capabilities without feeling contrived.
+
+### Core design philosophy
+The central thesis is **grounded assistance over open-ended chat**. Rather than giving users a blank chat box backed by an unconstrained LLM, every Gemini call is tightly scoped:
+
+1. **Context injection** — the system prompt always includes the full venue schema (`data/venue.json`), a live state snapshot from `lib/simEngine.ts`, the user's current role, their language preference, and any declared accessibility needs. The model reasons over *this specific venue* at *this specific moment*, not a generic stadium.
+2. **Named-entity grounding** — an exhaustive list of real entity names (gate IDs, facility names, transit routes) is injected so the model can explicitly refuse invented locations rather than hallucinating a plausible-sounding answer.
+3. **Mode-specific instructions** — each API call carries a `mode` parameter (`wayfinding`, `transport`, `ops_alert`, `briefing`, `translation`) that switches the system prompt's instruction block. This keeps responses focused and makes structured-JSON output (used by ops_alert and briefing) reliable.
+4. **Streaming by default** — fan-facing chat uses the Gemini streaming API piped through a Next.js `ReadableStream` response, so the first token appears within ~300 ms. This matters for a live demo and for real fan UX where waiting feels like failure.
+5. **Decoupled data layer** — `LiveState` is a plain TypeScript type consumed by `lib/gemini.ts`. The simulation engine (`lib/simEngine.ts`) is a drop-in stand-in for real venue API feeds; swapping it out requires no changes to the AI or UI layers.
+
+### Role-based context as the UX mechanic
+Switching role in the AppShell nav bar instantly changes what the AI knows about *you*: a Fan gets wayfinding and accessibility answers; an Ops staff member gets incident-aware alerts and shift briefings; a Volunteer gets adapted welcome phrasing and helper-mode responses. This demonstrates how a single model + single prompt template can power meaningfully different experiences through context alone — no fine-tuning required.
+
+---
+
+## 📌 Assumptions
+
+The following assumptions were made during development. In a production deployment each would be addressed as noted.
+
+| Assumption | Production path |
+|---|---|
+| **No real venue API** — all crowd, transit, and incident data is stochastic simulation | Replace `GET /api/sim-data` with a poller against the venue's crowd management / ticketing API |
+| **In-memory singleton state** — `simEngine.ts` stores `LiveState` as a module-level variable inside the Next.js server process | Replace with a Redis or Pub/Sub backed store so state is consistent across serverless instances |
+| **Static weather** — "Sunny, 28 °C" is hardcoded in the system prompt | Connect to a weather API (e.g. Google Weather API) and inject current conditions per tick |
+| **Three languages only** — English, Spanish, French | Gemini supports all major languages; extending the picker is a UI-only change |
+| **No authentication** — role is a session toggle, not a verified identity | Add OAuth / venue ticketing SSO; gate ops routes behind a verified `ops` role claim |
+| **Venue modelled on a generic 80,000-seat NFL stadium in Dallas, TX** — not an actual FIFA 2026 venue | Swap `data/venue.json` for real venue data from the host-city venue operator |
+| **Vercel serverless cold-start** — handled by a `/api/warmup` pre-warm call on app mount; not a substitute for provisioned concurrency at scale | Use Vercel Fluid Compute or provisioned concurrency for the assistant route in production |
+| **No persistent event log** — `eventLog` resets on server restart; briefings only reflect the current process lifetime | Persist events to a database (Postgres / Firestore) for cross-session briefing continuity |
+
+---
+
 ## ✅ What's Real vs. Simulated
 
 | Layer | Status | Details |
