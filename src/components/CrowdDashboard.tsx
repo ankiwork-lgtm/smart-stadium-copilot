@@ -8,8 +8,26 @@
  * Task 5.1 [MUST]
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LiveState, CrowdLevel, VenueData } from "../../lib/types";
+
+// Module-level venue cache to avoid duplicate fetches across components
+let _venueCache: VenueData | null = null;
+let _venueCachePromise: Promise<VenueData> | null = null;
+
+async function fetchVenueOnce(): Promise<VenueData> {
+  if (_venueCache) return _venueCache;
+  if (_venueCachePromise) return _venueCachePromise;
+
+  _venueCachePromise = fetch("/api/venue")
+    .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+    .then((data: VenueData) => {
+      _venueCache = data;
+      return data;
+    });
+
+  return _venueCachePromise;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,6 +84,12 @@ const TRANSIT_STATUS_CONFIG = {
   on_time: { label: "On time", color: "text-emerald-400", dot: "bg-emerald-400" },
   delayed: { label: "Delayed", color: "text-orange-400", dot: "bg-orange-400" },
   closed: { label: "Closed", color: "text-red-400", dot: "bg-red-400" },
+};
+
+const TRANSIT_MODE_ICON: Record<string, string> = {
+  train: "🚆",
+  bus: "🚌",
+  rideshare: "🚗",
 };
 
 function CrowdBar({ level }: { level: CrowdLevel }) {
@@ -136,12 +160,11 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
   // useCallback gives the polling effect a stable reference to depend on.
   }, []);
 
-  // Fetch venue data once on mount to drive zone/transit label lookups
+  // Fetch venue data once on mount (cached to avoid duplicate requests)
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/venue")
-      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-      .then((data: VenueData) => { if (!cancelled) setVenueData(data); })
+    fetchVenueOnce()
+      .then((data) => { if (!cancelled) setVenueData(data); })
       .catch((err) => {
         console.error("[CrowdDashboard] venue fetch error:", err);
         if (!cancelled) setVenueError("Could not load venue details. Some labels may be generic.");
@@ -180,6 +203,18 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
     }
   };
 
+  // Memoize lookup maps so they're only rebuilt when venueData actually changes
+  // Must be called before any early returns
+  const gateById = useMemo(
+    () => Object.fromEntries((venueData?.gates ?? []).map((g) => [g.id, g])),
+    [venueData?.gates]
+  );
+
+  const transitById = useMemo(
+    () => Object.fromEntries((venueData?.transitOptions ?? []).map((t) => [t.id, t])),
+    [venueData?.transitOptions]
+  );
+
   // ---------------------------------------------------------------------------
   // Loading skeleton
   // ---------------------------------------------------------------------------
@@ -203,22 +238,6 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
       </div>
     );
   }
-
-  // Build lookup maps from venue data so gate cards and transit labels
-  // reflect venue.json rather than hardcoded values.
-  const gateById = Object.fromEntries(
-    (venueData?.gates ?? []).map((g) => [g.id, g])
-  );
-  const transitById = Object.fromEntries(
-    (venueData?.transitOptions ?? []).map((t) => [t.id, t])
-  );
-
-  // Emoji prefix per transit mode
-  const TRANSIT_MODE_ICON: Record<string, string> = {
-    train: "🚆",
-    bus: "🚌",
-    rideshare: "🚗",
-  };
 
   // Build gate card list from live state, enriched with venue data
   const gates: GateCard[] = liveState

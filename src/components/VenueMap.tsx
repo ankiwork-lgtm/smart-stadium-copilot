@@ -17,6 +17,24 @@
 import { useEffect, useState } from "react";
 import type { VenueData } from "../../lib/types";
 
+// Module-level venue cache shared with CrowdDashboard to avoid duplicate fetches
+let _venueCache: VenueData | null = null;
+let _venueCachePromise: Promise<VenueData> | null = null;
+
+async function fetchVenueOnce(): Promise<VenueData> {
+  if (_venueCache) return _venueCache;
+  if (_venueCachePromise) return _venueCachePromise;
+
+  _venueCachePromise = fetch("/api/venue")
+    .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+    .then((data: VenueData) => {
+      _venueCache = data;
+      return data;
+    });
+
+  return _venueCachePromise;
+}
+
 // ---------------------------------------------------------------------------
 // Visual mappings
 // ---------------------------------------------------------------------------
@@ -66,9 +84,8 @@ export function VenueMap({ highlightedIds = [] }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/venue")
-      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-      .then((data: VenueData) => {
+    fetchVenueOnce()
+      .then((data) => {
         if (!cancelled) {
           setVenueData(data);
           setLoading(false);
