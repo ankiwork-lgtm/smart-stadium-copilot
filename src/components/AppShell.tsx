@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200 ${
                 pathname?.startsWith("/fan")
                   ? "bg-blue-600 text-white shadow-md shadow-blue-900/40"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
+                  : "text-gray-300 hover:text-white hover:bg-white/10"
               }`}
             >
               Fan App
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200 ${
                 pathname?.startsWith("/ops")
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/40"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
+                  : "text-gray-300 hover:text-white hover:bg-white/10"
               }`}
             >
               Ops Console
@@ -132,7 +132,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className={`px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
                     userContext.role === r.value
                       ? "bg-blue-600 text-white"
-                      : "text-gray-500 hover:text-white hover:bg-white/10"
+                      : "text-gray-300 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   <span aria-hidden="true">{r.icon}</span>
@@ -159,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className={`px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
                     userContext.language === l.value
                       ? "bg-emerald-600 text-white"
-                      : "text-gray-500 hover:text-white hover:bg-white/10"
+                      : "text-gray-300 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   {l.label}

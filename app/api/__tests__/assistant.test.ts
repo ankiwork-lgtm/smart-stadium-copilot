@@ -53,10 +53,15 @@ import { POST } from "../assistant/route";
 // Helpers
 // ---------------------------------------------------------------------------
 
+// Each makeRequest call gets a unique IP so tests never share rate-limit quota.
+let _ipCounter = 0;
 function makeRequest(body: unknown): NextRequest {
   return new NextRequest("http://localhost/api/assistant", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-forwarded-for": `192.0.2.${(_ipCounter++ % 254) + 1}`,
+    },
     body: JSON.stringify(body),
   });
 }
@@ -280,5 +285,135 @@ describe("POST /api/assistant — response headers", () => {
   it("sets Cache-Control: no-cache, no-store", async () => {
     const res = await POST(makeRequest(validBody));
     expect(res.headers.get("Cache-Control")).toBe("no-cache, no-store");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rate limiting
+// ---------------------------------------------------------------------------
+
+describe("POST /api/assistant — rate limiting", () => {
+  it("returns 429 after exceeding the per-IP limit within one window", async () => {
+    // The route uses 20 req/min. We need a fresh module so the limiter counter
+    // starts at zero. Use vi.resetModules() + dynamic import for isolation.
+    vi.resetModules();
+
+    vi.doMock("../../../lib/gemini", () => ({
+      askAssistantStream: vi.fn(async function* () {
+        yield "ok";
+      }),
+    }));
+    vi.doMock("../../../lib/simEngine", () => ({
+      getState: vi.fn(() => ({
+        timestamp: "2026-07-01T12:00:00.000Z",
+        crowdDensity: { "gate-a": "low", "gate-b": "low", "gate-c": "low", "gate-d": "low", "gate-e": "low" },
+        transitStatus: { "train-1": { status: "on_time" }, "bus-1": { status: "on_time" }, "bus-2": { status: "on_time" }, "rideshare-1": { status: "on_time" } },
+        incidents: [],
+        weather: { condition: "Sunny", tempC: 28 },
+        eventLog: [],
+      })),
+    }));
+
+    const { POST: freshPOST } = await import("../assistant/route");
+
+    // Send 20 requests (all should be allowed — they consume the quota)
+    for (let i = 0; i < 20; i++) {
+      const res = await freshPOST(
+        new NextRequest("http://localhost/api/assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-forwarded-for": "10.0.0.1" },
+          body: JSON.stringify(validBody),
+        })
+      );
+      expect(res.status).toBe(200);
+    }
+
+    // 21st request from the same IP must be rate-limited
+    const blocked = await freshPOST(
+      new NextRequest("http://localhost/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": "10.0.0.1" },
+        body: JSON.stringify(validBody),
+      })
+    );
+    expect(blocked.status).toBe(429);
+    const json = await blocked.json();
+    expect(json.error).toMatch(/too many requests/i);
+  });
+
+  it("returns a Retry-After header on 429", async () => {
+    vi.resetModules();
+
+    vi.doMock("../../../lib/gemini", () => ({
+      askAssistantStream: vi.fn(async function* () { yield "ok"; }),
+    }));
+    vi.doMock("../../../lib/simEngine", () => ({
+      getState: vi.fn(() => ({
+        timestamp: "2026-07-01T12:00:00.000Z",
+        crowdDensity: { "gate-a": "low", "gate-b": "low", "gate-c": "low", "gate-d": "low", "gate-e": "low" },
+        transitStatus: { "train-1": { status: "on_time" }, "bus-1": { status: "on_time" }, "bus-2": { status: "on_time" }, "rideshare-1": { status: "on_time" } },
+        incidents: [],
+        weather: { condition: "Sunny", tempC: 28 },
+        eventLog: [],
+      })),
+    }));
+
+    const { POST: freshPOST } = await import("../assistant/route");
+
+    const makeIpReq = () =>
+      new NextRequest("http://localhost/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": "10.0.0.99" },
+        body: JSON.stringify(validBody),
+      });
+
+    for (let i = 0; i < 20; i++) await freshPOST(makeIpReq());
+
+    const blocked = await freshPOST(makeIpReq());
+    expect(blocked.status).toBe(429);
+    const retryAfter = blocked.headers.get("Retry-After");
+    expect(retryAfter).toBeTruthy();
+    expect(Number(retryAfter)).toBeGreaterThan(0);
+  });
+
+  it("a different IP is not affected by another IP's rate limit", async () => {
+    vi.resetModules();
+
+    vi.doMock("../../../lib/gemini", () => ({
+      askAssistantStream: vi.fn(async function* () { yield "ok"; }),
+    }));
+    vi.doMock("../../../lib/simEngine", () => ({
+      getState: vi.fn(() => ({
+        timestamp: "2026-07-01T12:00:00.000Z",
+        crowdDensity: { "gate-a": "low", "gate-b": "low", "gate-c": "low", "gate-d": "low", "gate-e": "low" },
+        transitStatus: { "train-1": { status: "on_time" }, "bus-1": { status: "on_time" }, "bus-2": { status: "on_time" }, "rideshare-1": { status: "on_time" } },
+        incidents: [],
+        weather: { condition: "Sunny", tempC: 28 },
+        eventLog: [],
+      })),
+    }));
+
+    const { POST: freshPOST } = await import("../assistant/route");
+
+    // Exhaust quota for ip-A
+    for (let i = 0; i < 20; i++) {
+      await freshPOST(
+        new NextRequest("http://localhost/api/assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-forwarded-for": "10.1.1.1" },
+          body: JSON.stringify(validBody),
+        })
+      );
+    }
+
+    // ip-B should still be allowed
+    const res = await freshPOST(
+      new NextRequest("http://localhost/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": "10.1.1.2" },
+        body: JSON.stringify(validBody),
+      })
+    );
+    expect(res.status).toBe(200);
   });
 });

@@ -278,7 +278,7 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
           )}
         </div>
         {lastUpdated && (
-          <span className="text-[10px] text-gray-600">
+          <span className="text-[10px] text-gray-400">
             Updated {lastUpdated.toLocaleTimeString()}
           </span>
         )}
@@ -299,7 +299,7 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-bold text-white">{gate.name}</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">{gate.zone} Zone</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{gate.zone} Zone</p>
                 </div>
                 <div className="text-right">
                   <span className={`text-xs font-bold tracking-wide ${cfg.color}`}>
@@ -309,7 +309,7 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
                     )}
                   </span>
                   {gate.accessible && (
-                    <p className="text-[10px] text-gray-600 mt-0.5">♿ Accessible</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">♿ Accessible</p>
                   )}
                 </div>
               </div>
@@ -322,7 +322,7 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
       {/* Transit status mini-row */}
       {liveState && (
         <div className="rounded-2xl bg-white/[0.025] border border-white/[0.07] p-4">
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
             Transit Status
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -349,15 +349,15 @@ export function CrowdDashboard({ onSpikeTriggered, hideSpikeButton = false }: Pr
       {/* Weather strip */}
       {liveState?.weather && (
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-4 py-2.5
-                        flex items-center gap-3 text-xs text-gray-400">
+                        flex items-center gap-3 text-xs text-gray-300">
           <span className="text-base">
             {liveState.weather.condition === "Sunny" ? "☀️" :
              liveState.weather.condition.includes("Cloud") ? "⛅" :
              liveState.weather.condition.includes("Rain") || liveState.weather.condition.includes("Thunder") ? "⛈️" : "🌤️"}
           </span>
           <span>{liveState.weather.condition} · {liveState.weather.tempC}°C</span>
-          <span className="text-gray-700">|</span>
-          <span className="text-gray-500">Legacy Stadium</span>
+          <span className="text-gray-500">|</span>
+          <span className="text-gray-400">Legacy Stadium</span>
         </div>
       )}
 

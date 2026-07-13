@@ -27,7 +27,7 @@ export default function Home() {
             Ops Console →
           </Link>
         </div>
-        <p className="mt-12 text-xs text-gray-500">
+        <p className="mt-12 text-xs text-gray-400">
           ⚠️ All live data is simulated for this demo.
         </p>
       </div>

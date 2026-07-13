@@ -29,9 +29,10 @@
  * Task 3.4 [SHOULD]
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getState } from "../../../lib/simEngine";
 import { askAssistantStructured } from "../../../lib/gemini";
+import { createRateLimiter, getClientIp } from "../../../lib/rateLimiter";
 import venueJson from "../../../data/venue.json";
 import type { VenueData, CrowdLevel, Alert, AlertPriority } from "../../../lib/types";
 
@@ -52,6 +53,10 @@ const ALERT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 // has fully expired (2× window), preventing unbounded Map growth over long sessions.
 const SEEN_BREACH_GC_MS = ALERT_COOLDOWN_MS * 2;
 
+// Rate limiter — 30 requests per IP per minute (UI polls every 5 s; this
+// allows a normal session while blocking rapid automated abuse).
+const rateLimiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -67,7 +72,21 @@ type Breach = {
 // Route handler
 // ---------------------------------------------------------------------------
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  // --- Rate limit check ---
+  const ip = getClientIp(req);
+  const rl = rateLimiter.check(ip);
+  if (!rl.allowed) {
+    const retryAfterSec = Math.ceil(rl.retryAfterMs / 1000);
+    return NextResponse.json(
+      { error: "Too many requests. Please reduce polling frequency." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSec) },
+      }
+    );
+  }
+
   try {
     const state = getState();
 

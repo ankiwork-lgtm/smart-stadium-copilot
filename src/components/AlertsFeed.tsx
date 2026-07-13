@@ -164,7 +164,7 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
           id="refresh-alerts-btn"
           onClick={fetchAlerts}
           disabled={fetching}
-          className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors
+          className="text-[10px] text-gray-400 hover:text-gray-200 transition-colors
                      disabled:opacity-40 px-2 py-0.5 rounded"
           aria-label="Refresh alerts"
         >
@@ -176,8 +176,8 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
       {alerts.length === 0 && !error && (
         <div className="rounded-2xl bg-white/[0.02] border border-white/[0.05] p-6 text-center">
           <p className="text-3xl mb-2">✅</p>
-          <p className="text-sm text-gray-400">No active alerts</p>
-          <p className="text-xs text-gray-600 mt-1">All conditions are within normal thresholds</p>
+          <p className="text-sm text-gray-300">No active alerts</p>
+          <p className="text-xs text-gray-400 mt-1">All conditions are within normal thresholds</p>
         </div>
       )}
 
@@ -207,10 +207,10 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
                   <span className={`text-[10px] font-bold tracking-widest ${cfg.color}`}>
                     {cfg.label}
                   </span>
-                  <span className="text-[10px] text-gray-600">
+                  <span className="text-[10px] text-gray-400">
                     {sourceLabel(alert.source)}
                   </span>
-                  <span className="text-[10px] text-gray-700 ml-auto">
+                  <span className="text-[10px] text-gray-400 ml-auto">
                     {timeAgo(alert.timestamp)}
                   </span>
                 </div>
@@ -218,7 +218,7 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
                   {alert.summary}
                 </p>
               </div>
-              <span className="text-[10px] text-gray-700 shrink-0 mt-0.5">
+              <span className="text-[10px] text-gray-400 shrink-0 mt-0.5">
                 {isExpanded ? "▲" : "▼"}
               </span>
             </div>
@@ -226,14 +226,14 @@ export function AlertsFeed({ onNewHighAlert }: Props) {
             {/* Expanded: recommended action */}
             {isExpanded && (
               <div className="mt-3 pt-3 border-t border-white/[0.05] animate-fade-in">
-                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
                   Recommended Action
                 </p>
                 <p className="text-xs text-gray-300 leading-relaxed">
                   {alert.recommendedAction}
                 </p>
                 {alert.rawText && (
-                  <p className="mt-2 text-[10px] text-gray-600 italic">
+                  <p className="mt-2 text-[10px] text-gray-400 italic">
                     ⚠️ AI response was not structured JSON — raw text shown above.
                   </p>
                 )}

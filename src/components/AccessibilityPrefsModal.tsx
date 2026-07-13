@@ -141,7 +141,7 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
           >
             ♿ Accessibility Preferences
           </h2>
-          <p className="text-sm text-gray-400 mt-1.5 leading-relaxed">
+          <p className="text-sm text-gray-300 mt-1.5 leading-relaxed">
             Help us give you better directions and facility suggestions.
             These are stored locally and never shared.
           </p>
@@ -173,7 +173,7 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
                   <div className="text-sm font-medium text-gray-200">
                     {need.label}
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
+                  <div className="text-xs text-gray-400 mt-0.5">
                     {need.description}
                   </div>
                 </div>
@@ -186,7 +186,7 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
         <div className="mb-5">
           <label
             htmlFor="location-hint-input"
-            className="text-xs font-medium text-gray-400 block mb-1.5"
+            className="text-xs font-medium text-gray-300 block mb-1.5"
           >
             Your current location (optional)
           </label>
@@ -197,7 +197,7 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
             onChange={(e) => setLocationHint(e.target.value)}
             placeholder="e.g. Near Gate A, Section 110..."
             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm
-                       text-white placeholder-gray-600 outline-none
+                       text-white placeholder-gray-500 outline-none
                        focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-colors"
           />
         </div>
@@ -207,7 +207,7 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
           <button
             id="a11y-modal-skip"
             onClick={closeModal}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-sm text-gray-400
+            className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-sm text-gray-300
                        hover:bg-white/[0.04] hover:text-white transition-colors"
           >
             Skip for now

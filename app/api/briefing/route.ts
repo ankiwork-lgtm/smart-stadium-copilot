@@ -25,12 +25,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getState } from "../../../lib/simEngine";
 import { askAssistantStructured } from "../../../lib/gemini";
+import { createRateLimiter, getClientIp } from "../../../lib/rateLimiter";
 import venueJson from "../../../data/venue.json";
 import type { VenueData } from "../../../lib/types";
 
 const venue = venueJson as VenueData;
 
+// Rate limiter — 10 requests per IP per minute (briefing is heavier / less frequent)
+const rateLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // --- Rate limit check ---
+  const ip = getClientIp(req);
+  const rl = rateLimiter.check(ip);
+  if (!rl.allowed) {
+    const retryAfterSec = Math.ceil(rl.retryAfterMs / 1000);
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before generating another briefing." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSec) },
+      }
+    );
+  }
+
   // Optional language override in the body — defaults to "en" if body is absent or malformed.
   let language: "en" | "es" | "fr" = "en";
   try {

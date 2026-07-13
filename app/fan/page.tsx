@@ -117,7 +117,7 @@ export default function FanPage() {
             <h1 className="text-xl font-bold text-white tracking-tight">
               Fan Assistant
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               Legacy Stadium · Dallas, TX · FIFA World Cup 2026
             </p>
           </div>
@@ -175,12 +175,12 @@ export default function FanPage() {
                     className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
                     aria-hidden="true"
                   />
-                  <span className="text-xs text-gray-400 font-medium">
+                  <span className="text-xs text-gray-300 font-medium">
                     Stadium Copilot · AI‑powered
                   </span>
                 </div>
                 <span
-                  className="text-[10px] text-gray-600 bg-white/[0.04] px-2 py-0.5 rounded-full capitalize"
+                  className="text-[10px] text-gray-400 bg-white/[0.04] px-2 py-0.5 rounded-full capitalize"
                   aria-label={`Current mode: ${activeMode}`}
                 >
                   {activeMode}

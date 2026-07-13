@@ -20,8 +20,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askAssistantStream } from "../../../lib/gemini";
 import { getState } from "../../../lib/simEngine";
+import { createRateLimiter, getClientIp } from "../../../lib/rateLimiter";
 import venueJson from "../../../data/venue.json";
 import type { AssistantMode, UserContext, VenueData } from "../../../lib/types";
+
+// ---------------------------------------------------------------------------
+// Rate limiter — 20 requests per IP per minute
+// ---------------------------------------------------------------------------
+
+const rateLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -49,6 +56,20 @@ const venue = venueJson as VenueData;
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest): Promise<NextResponse | Response> {
+  // --- 0. Rate limit check ---
+  const ip = getClientIp(req);
+  const rl = rateLimiter.check(ip);
+  if (!rl.allowed) {
+    const retryAfterSec = Math.ceil(rl.retryAfterMs / 1000);
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down and try again shortly." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSec) },
+      }
+    );
+  }
+
   // --- 1. Parse body ---
   let body: unknown;
   try {

@@ -63,7 +63,7 @@ export function SustainabilityCard() {
     <div className="flex flex-col gap-4">
 
       {/* Header note */}
-      <p className="text-[11px] text-gray-500 leading-relaxed">
+      <p className="text-[11px] text-gray-400 leading-relaxed">
         Simulated estimates for this demo session · Based on FIFA 2026 Zero‑Waste targets
       </p>
 
@@ -74,7 +74,7 @@ export function SustainabilityCard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span aria-hidden="true" className="text-sm">{stat.icon}</span>
-                <span className="text-xs text-gray-400 font-medium">{stat.label}</span>
+                <span className="text-xs text-gray-300 font-medium">{stat.label}</span>
               </div>
               <span className={`text-sm font-bold tabular-nums ${stat.color}`}>
                 {stat.value}
@@ -88,14 +88,14 @@ export function SustainabilityCard() {
                 aria-hidden="true"
               />
             </div>
-            <p className="text-[10px] text-gray-600">{stat.subtext}</p>
+            <p className="text-[10px] text-gray-400">{stat.subtext}</p>
           </div>
         ))}
       </div>
 
       {/* Recycling point status table */}
       <div>
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-2">
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
           Eco Stations Status
         </h3>
         <div className="flex flex-col gap-1">
@@ -107,7 +107,7 @@ export function SustainabilityCard() {
             >
               <div>
                 <span className="text-xs text-gray-300">{pt.name}</span>
-                <span className="text-[10px] text-gray-600 ml-1.5">· {pt.nearGate}</span>
+                <span className="text-[10px] text-gray-400 ml-1.5">· {pt.nearGate}</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" aria-hidden="true" />

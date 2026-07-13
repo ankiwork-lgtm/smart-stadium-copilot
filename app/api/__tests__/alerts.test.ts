@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import { NextRequest } from "next/server";
 import type { LiveState } from "../../../lib/types";
 
 // ---------------------------------------------------------------------------
@@ -15,6 +16,19 @@ import type { LiveState } from "../../../lib/types";
 // in-memory Maps that carry state between tests.
 // Use vi.resetModules() + dynamic import inside each describe block.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Helper — produce a GET request with a unique IP so the rate-limiter never
+// blocks test calls (each call to makeAlertRequest() generates a new IP).
+// ---------------------------------------------------------------------------
+
+let _alertIpCounter = 0;
+function makeAlertRequest(): NextRequest {
+  return new NextRequest("http://localhost/api/alerts", {
+    method: "GET",
+    headers: { "x-forwarded-for": `198.51.100.${(_alertIpCounter++ % 254) + 1}` },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Default mock LiveState factory
@@ -57,7 +71,7 @@ describe("GET /api/alerts — no breaches", () => {
     vi.doMock("../../../lib/gemini", () => ({ askAssistantStructured: vi.fn() }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(Array.isArray(json)).toBe(true);
@@ -88,7 +102,7 @@ describe("GET /api/alerts — crowd density breaches", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     expect(json.length).toBeGreaterThanOrEqual(1);
@@ -113,7 +127,7 @@ describe("GET /api/alerts — crowd density breaches", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     const alert = json.find((a: { source: string }) => a.source === "gate-a");
@@ -139,7 +153,7 @@ describe("GET /api/alerts — crowd density breaches", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
     expect(json).toHaveLength(0);
   });
@@ -175,7 +189,7 @@ describe("GET /api/alerts — transit delay breaches", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     const alert = json.find((a: { source: string }) => a.source === "train-1");
@@ -218,7 +232,7 @@ describe("GET /api/alerts — incident breaches", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     const alert = json.find((a: { source: string }) => a.source === "incident-1");
@@ -251,7 +265,7 @@ describe("GET /api/alerts — incident breaches", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     const alert = json.find((a: { source: string }) => a.source === "incident-med-1");
@@ -280,7 +294,7 @@ describe("GET /api/alerts — incident breaches", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
     expect(json).toHaveLength(0);
   });
@@ -309,7 +323,7 @@ describe("GET /api/alerts — response shape", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     for (const alert of json) {
@@ -343,7 +357,7 @@ describe("GET /api/alerts — response shape", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     if (json.length >= 2) {
@@ -369,7 +383,7 @@ describe("GET /api/alerts — response shape", () => {
     }));
 
     const { GET } = await import("../alerts/route");
-    const res = await GET();
+    const res = await GET(makeAlertRequest());
     const json = await res.json();
 
     expect(json.length).toBeGreaterThanOrEqual(1);
@@ -417,14 +431,14 @@ describe("GET /api/alerts — dedup: oscillation cooldown", () => {
     getStateMock.mockReturnValue(
       makeState({ crowdDensity: { "gate-a": "high", "gate-b": "low", "gate-c": "low", "gate-d": "low", "gate-e": "low" } })
     );
-    await GET();
+    await GET(makeAlertRequest());
     expect(callCount).toBe(1);
 
     // Second call: gate-a cleared
     getStateMock.mockReturnValue(
       makeState({ crowdDensity: { "gate-a": "low", "gate-b": "low", "gate-c": "low", "gate-d": "low", "gate-e": "low" } })
     );
-    await GET();
+    await GET(makeAlertRequest());
     expect(callCount).toBe(1); // No new alert for cleared breach
 
     // Third call: gate-a reactivated immediately (after fix, _seenBreachIds was cleared when breach resolved)
@@ -433,7 +447,7 @@ describe("GET /api/alerts — dedup: oscillation cooldown", () => {
     getStateMock.mockReturnValue(
       makeState({ crowdDensity: { "gate-a": "high", "gate-b": "low", "gate-c": "low", "gate-d": "low", "gate-e": "low" } })
     );
-    await GET();
+    await GET(makeAlertRequest());
     // This documents the fixed behavior: reactivated breaches get new alerts.
     // If this test fails, it means _seenBreachIds wasn't cleared or the fix broke.
     expect(callCount).toBe(2);

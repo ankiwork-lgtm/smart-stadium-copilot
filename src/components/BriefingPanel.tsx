@@ -128,7 +128,7 @@ export function BriefingPanel() {
               >
                 {PRIORITY_BADGE[briefing.priority].label} priority
               </span>
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 {new Date(briefing.generatedAt).toLocaleTimeString()}
               </span>
             </div>
@@ -138,7 +138,7 @@ export function BriefingPanel() {
           <div className="px-4 py-4 space-y-4">
             {/* Summary */}
             <div>
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                 Summary
               </p>
               <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
@@ -149,7 +149,7 @@ export function BriefingPanel() {
             {/* Recommended Action */}
             {briefing.recommendedAction && briefing.recommendedAction !== "Review full log for details." && (
               <div className="pt-3 border-t border-white/[0.05]">
-                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                   Recommended Action
                 </p>
                 <p className="text-sm text-gray-300 leading-relaxed">
@@ -170,7 +170,7 @@ export function BriefingPanel() {
             <button
               id="regenerate-briefing-btn"
               onClick={generateBriefing}
-              className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
+              className="text-[11px] text-gray-400 hover:text-gray-200 transition-colors"
             >
               ↻ Regenerate
             </button>
@@ -181,7 +181,7 @@ export function BriefingPanel() {
       {/* Placeholder hint when no briefing yet */}
       {!briefing && !loading && !error && (
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-4 text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Click the button above to generate an AI-powered shift summary based on recent event logs.
           </p>
         </div>

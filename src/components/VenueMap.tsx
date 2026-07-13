@@ -139,7 +139,7 @@ export function VenueMap({ highlightedIds = [] }: Props) {
           <span aria-hidden="true">📍</span>
           {venueData.venueName}
         </span>
-        <span className="text-[10px] text-gray-600">{venueData.city}</span>
+        <span className="text-[10px] text-gray-400">{venueData.city}</span>
       </div>
 
       {/* SVG Map */}
@@ -352,7 +352,7 @@ export function VenueMap({ highlightedIds = [] }: Props) {
                 y={labelY + 3}
                 textAnchor="middle"
                 fontSize="7"
-                fill={isHighlighted ? "#fbbf24" : "#4b5563"}
+                fill={isHighlighted ? "#fbbf24" : "#6b7280"}
                 fontFamily="system-ui, sans-serif"
               >
                 {gate.label}
@@ -369,7 +369,7 @@ export function VenueMap({ highlightedIds = [] }: Props) {
         {Object.entries(FACILITY_ICONS).map(([type, icon]) => (
           <span
             key={type}
-            className="text-[10px] text-gray-600 flex items-center gap-1"
+            className="text-[10px] text-gray-400 flex items-center gap-1"
           >
             <span>{icon}</span>
             <span className="capitalize">{type.replace("_", " ")}</span>

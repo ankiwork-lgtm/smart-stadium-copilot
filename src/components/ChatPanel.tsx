@@ -334,7 +334,7 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
             rows={1}
             aria-label="Type your message"
             className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm
-                       text-white placeholder-gray-600 outline-none resize-none max-h-32 overflow-auto
+                       text-white placeholder-gray-500 outline-none resize-none max-h-32 overflow-auto
                        focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20
                        disabled:opacity-50 disabled:cursor-not-allowed
                        transition-colors"
@@ -367,7 +367,7 @@ export function ChatPanel({ mode, onAssistantReply }: Props) {
             )}
           </button>
         </div>
-        <p className="text-[10px] text-gray-700 mt-1.5 text-center select-none">
+        <p className="text-[10px] text-gray-400 mt-1.5 text-center select-none">
           AI responses are grounded in venue data · Enter to send, Shift+Enter for new line
         </p>
       </div>
