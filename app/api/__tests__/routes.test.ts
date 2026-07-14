@@ -185,6 +185,30 @@ describe("POST /api/sim-data/trigger-spike", () => {
     vi.resetModules();
   });
 
+  /** Build a minimal NextRequest mock with a valid ops_staff session cookie. */
+  async function makeOpsRequest() {
+    // Mock lib/auth so verifySessionToken returns an ops payload without
+    // needing a real HMAC secret in the test environment.
+    vi.doMock("../../../lib/auth", () => ({
+      SESSION_COOKIE: "stadium_session",
+      verifySessionToken: () => ({ role: "ops_staff", iat: Date.now() }),
+      createSessionToken: () => "mock-token",
+      makeSessionCookie: () => "stadium_session=mock-token; HttpOnly",
+      clearSessionCookie: () => "stadium_session=; HttpOnly; Max-Age=0",
+    }));
+
+    const { NextRequest } = await import("next/server");
+    const req = new NextRequest("http://localhost/api/sim-data/trigger-spike", {
+      method: "POST",
+    });
+    // Manually inject the session cookie value used by the mock
+    Object.defineProperty(req, "cookies", {
+      value: { get: (name: string) => (name === "stadium_session" ? { value: "mock-token" } : undefined) },
+      writable: false,
+    });
+    return req;
+  }
+
   it("returns updated LiveState after spike", async () => {
     vi.doMock("../../../lib/simEngine", () => ({
       triggerSpike: () => ({
@@ -217,8 +241,9 @@ describe("POST /api/sim-data/trigger-spike", () => {
       }),
     }));
 
+    const req = await makeOpsRequest();
     const { POST } = await import("../sim-data/trigger-spike/route");
-    const res = await POST();
+    const res = await POST(req);
 
     expect(res.status).toBe(200);
     const data: LiveState = await res.json();
@@ -233,12 +258,36 @@ describe("POST /api/sim-data/trigger-spike", () => {
       },
     }));
 
+    const req = await makeOpsRequest();
     const { POST } = await import("../sim-data/trigger-spike/route");
-    const res = await POST();
+    const res = await POST(req);
 
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error).toBe("Failed to trigger spike.");
+  });
+
+  it("returns 401 when no session cookie is present", async () => {
+    vi.doMock("../../../lib/auth", () => ({
+      SESSION_COOKIE: "stadium_session",
+      verifySessionToken: () => null,
+    }));
+
+    const { NextRequest } = await import("next/server");
+    const req = new NextRequest("http://localhost/api/sim-data/trigger-spike", {
+      method: "POST",
+    });
+    Object.defineProperty(req, "cookies", {
+      value: { get: () => undefined },
+      writable: false,
+    });
+
+    const { POST } = await import("../sim-data/trigger-spike/route");
+    const res = await POST(req);
+
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toMatch(/Authentication required/);
   });
 });
 

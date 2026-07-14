@@ -72,6 +72,11 @@ export function UserContextProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Sync <html lang="…"> so screen readers use the correct voice engine
+  useEffect(() => {
+    document.documentElement.lang = userContext.language;
+  }, [userContext.language]);
+
   const setUserContext = (
     ctx: UserContext | ((prev: UserContext) => UserContext)
   ) => {

@@ -148,7 +148,10 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
         </div>
 
         {/* Need checkboxes */}
-        <div className="space-y-2 mb-5">
+        <fieldset className="space-y-2 mb-5 border-0 p-0 m-0 min-w-0">
+          <legend className="text-xs font-medium text-gray-300 mb-1.5">
+            Accessibility needs
+          </legend>
           {NEEDS.map((need) => {
             const checked = needs.includes(need.value);
             return (
@@ -180,7 +183,7 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
               </label>
             );
           })}
-        </div>
+        </fieldset>
 
         {/* Location hint */}
         <div className="mb-5">

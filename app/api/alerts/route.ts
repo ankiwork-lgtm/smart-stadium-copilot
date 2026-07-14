@@ -188,7 +188,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         _generatedAlerts.delete(id);
       }
     }
-    for (const [id, lastAlerted] of _seenBreachIds.entries()) {
+    for (const id of _seenBreachIds.keys()) {
       if (!activeBreachIds.has(id)) {
         _seenBreachIds.delete(id);
       }

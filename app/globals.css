@@ -92,3 +92,17 @@ body {
     background-color: rgba(255, 255, 255, 0.2);
   }
 }
+
+/* -------------------------------------------------------------------------
+ * Accessibility — Reduced Motion
+ * Disables custom animations for users who have requested less motion
+ * via their OS/browser accessibility settings (e.g. vestibular disorders).
+ * ---------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

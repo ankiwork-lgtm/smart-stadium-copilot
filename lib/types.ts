@@ -43,7 +43,9 @@ export type LiveState = {
 };
 
 // ---------------------------------------------------------------------------
-// §3.3 — User / Session Context (mocked, no real auth)
+// §3.3 — User / Session Context
+// The ops_staff role is verified server-side via HMAC-signed session cookie
+// (see lib/auth.ts). Fan and volunteer remain self-declared (lower trust).
 // ---------------------------------------------------------------------------
 
 export type UserRole = "fan" | "ops_staff" | "volunteer";

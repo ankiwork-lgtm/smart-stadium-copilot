@@ -6,6 +6,13 @@
  * Accepts a JSON body, validates it, injects live state + venue data, and
  * streams the Gemini response token-by-token back to the client.
  *
+ * Role enforcement:
+ *   The client-supplied userContext.role is used for "fan" and "volunteer"
+ *   (lower-trust, no privileged data access). For "ops_staff", the server
+ *   IGNORES the client-supplied value and derives the role exclusively from
+ *   the verified session cookie. If a client sends role:"ops_staff" without
+ *   a valid ops session, the request is downgraded to "fan".
+ *
  * Request body (AssistantRequest):
  *   { userMessage, userContext, mode, liveState? }
  *
@@ -21,8 +28,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { askAssistantStream } from "../../../lib/gemini";
 import { getState } from "../../../lib/simEngine";
 import { createRateLimiter, getClientIp } from "../../../lib/rateLimiter";
+import { SESSION_COOKIE, verifySessionToken } from "../../../lib/auth";
 import venueJson from "../../../data/venue.json";
-import type { AssistantMode, UserContext, VenueData } from "../../../lib/types";
+import type { AssistantMode, UserContext, UserRole, VenueData } from "../../../lib/types";
 
 // ---------------------------------------------------------------------------
 // Rate limiter — 20 requests per IP per minute
@@ -124,6 +132,17 @@ export async function POST(req: NextRequest): Promise<NextResponse | Response> {
     );
   }
 
+  // --- Role enforcement ---
+  // The server derives the authoritative role from the signed session cookie.
+  // "ops_staff" is only granted when the cookie carries a verified ops session;
+  // any client that self-declares ops_staff without a valid session is silently
+  // downgraded to "fan" so they receive fan-level responses.
+  const sessionPayload = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+  let resolvedRole: UserRole = ctx.role as UserRole;
+  if (resolvedRole === "ops_staff" && sessionPayload?.role !== "ops_staff") {
+    resolvedRole = "fan";
+  }
+
   if (!VALID_LANGUAGES.includes(ctx.language as (typeof VALID_LANGUAGES)[number])) {
     return NextResponse.json(
       { error: `userContext.language must be one of: ${VALID_LANGUAGES.join(", ")}.` },
@@ -143,7 +162,7 @@ export async function POST(req: NextRequest): Promise<NextResponse | Response> {
   }
 
   const validatedContext: UserContext = {
-    role: ctx.role as UserContext["role"],
+    role: resolvedRole,
     language: ctx.language as UserContext["language"],
     accessibilityNeeds: Array.isArray(ctx.accessibilityNeeds)
       ? (ctx.accessibilityNeeds as UserContext["accessibilityNeeds"])

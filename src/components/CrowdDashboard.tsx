@@ -10,24 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LiveState, CrowdLevel, VenueData } from "../../lib/types";
-
-// Module-level venue cache to avoid duplicate fetches across components
-let _venueCache: VenueData | null = null;
-let _venueCachePromise: Promise<VenueData> | null = null;
-
-async function fetchVenueOnce(): Promise<VenueData> {
-  if (_venueCache) return _venueCache;
-  if (_venueCachePromise) return _venueCachePromise;
-
-  _venueCachePromise = fetch("/api/venue")
-    .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-    .then((data: VenueData) => {
-      _venueCache = data;
-      return data;
-    });
-
-  return _venueCachePromise;
-}
+import { fetchVenueOnce } from "../../lib/venueCache";
 
 // ---------------------------------------------------------------------------
 // Types

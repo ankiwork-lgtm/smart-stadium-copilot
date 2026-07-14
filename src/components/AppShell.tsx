@@ -5,16 +5,22 @@
  * Top-level shell with sticky navigation bar, role toggle, language picker,
  * and SimulatedDataBadge. Wraps every page.
  *
+ * Auth: switching to the "ops_staff" role requires a verified server session.
+ * Clicking the Ops button or the Ops Console nav tab opens OpsLoginModal if
+ * there is no active session. On successful login the cookie is set server-side
+ * and the role is updated in UserContext.
+ *
  * Task 4.1 [MUST]
  * Task 7.4 [SHOULD] — pre-warms Gemini on first mount so the first real
  *                      assistant call is fast during a live demo.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserContext } from "./UserContextProvider";
 import { SimulatedDataBadge } from "./SimulatedDataBadge";
+import { OpsLoginModal } from "./OpsLoginModal";
 import type { UserRole, Language } from "../../lib/types";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +47,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { userContext, setUserContext } = useUserContext();
   const pathname = usePathname();
   const router = useRouter();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingOpsNav, setPendingOpsNav] = useState(false);
 
   // Pre-warm the Gemini connection once per session (Task 7.4)
   useEffect(() => {
@@ -48,6 +56,55 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // Best-effort — silently ignore if warmup fails
     });
   }, []);
+
+  // On mount, check if there is already a valid ops session cookie so the role
+  // toggle reflects server state after a page reload.
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data: { role: string | null }) => {
+        if (data.role === "ops_staff" && userContext.role !== "ops_staff") {
+          setUserContext((prev) => ({ ...prev, role: "ops_staff" }));
+        } else if (data.role !== "ops_staff" && userContext.role === "ops_staff") {
+          // Session expired / cleared — downgrade stored role
+          setUserContext((prev) => ({ ...prev, role: "fan" }));
+        }
+      })
+      .catch(() => {/* best-effort */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Attempt to switch to ops_staff. If there is already a valid session the
+   * switch is immediate; otherwise we open the login modal. The pendingOpsNav
+   * flag controls whether we navigate to /ops after successful login.
+   */
+  const requestOpsAccess = useCallback(
+    async (navigateAfter: boolean) => {
+      const res = await fetch("/api/auth/session").catch(() => null);
+      const data = res ? ((await res.json()) as { role: string | null }) : { role: null };
+      if (data.role === "ops_staff") {
+        setUserContext((prev) => ({ ...prev, role: "ops_staff" }));
+        if (navigateAfter) router.push("/ops");
+      } else {
+        setPendingOpsNav(navigateAfter);
+        setShowLoginModal(true);
+      }
+    },
+    [router, setUserContext]
+  );
+
+  const handleLoginSuccess = useCallback(() => {
+    setShowLoginModal(false);
+    setUserContext((prev) => ({ ...prev, role: "ops_staff" }));
+    if (pendingOpsNav) router.push("/ops");
+  }, [pendingOpsNav, router, setUserContext]);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    setUserContext((prev) => ({ ...prev, role: "fan" }));
+    router.push("/fan");
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-stadium-gradient text-white">
@@ -95,10 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <button
               id="nav-ops-link"
-              onClick={() => {
-                setUserContext((prev) => ({ ...prev, role: "ops_staff" }));
-                router.push("/ops");
-              }}
+              onClick={() => requestOpsAccess(true)}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all duration-200 ${
                 pathname?.startsWith("/ops")
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/40"
@@ -122,13 +176,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   key={r.value}
                   id={`role-btn-${r.value}`}
                   onClick={() => {
-                    setUserContext((prev) => ({ ...prev, role: r.value }));
-                    // Navigate to the matching page for fan/ops roles
-                    if (r.value === "fan") router.push("/fan");
-                    else if (r.value === "ops_staff") router.push("/ops");
+                    if (r.value === "ops_staff") {
+                      requestOpsAccess(true);
+                    } else {
+                      setUserContext((prev) => ({ ...prev, role: r.value }));
+                      if (r.value === "fan") router.push("/fan");
+                    }
                   }}
                   aria-pressed={userContext.role === r.value}
-                  title={`Switch to ${r.label} mode`}
+                  title={`Switch to ${r.label} mode${r.value === "ops_staff" ? " (requires PIN)" : ""}`}
                   className={`px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
                     userContext.role === r.value
                       ? "bg-blue-600 text-white"
@@ -167,8 +223,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </div>
           </div>
+
+          {/* Logout button — visible only when authenticated as ops_staff */}
+          {userContext.role === "ops_staff" && (
+            <button
+              onClick={handleLogout}
+              title="Log out of Ops session"
+              className="ml-1 px-2.5 py-1.5 text-xs font-semibold text-red-400
+                         border border-red-400/20 rounded-lg hover:bg-red-400/10
+                         transition-all duration-200"
+              aria-label="Log out of Ops session"
+            >
+              Logout
+            </button>
+          )}
         </div>
       </nav>
+
+      {/* Ops login modal */}
+      {showLoginModal && (
+        <OpsLoginModal
+          onSuccess={handleLoginSuccess}
+          onCancel={() => setShowLoginModal(false)}
+        />
+      )}
 
       {/* ----------------------------------------------------------------- */}
       {/* Page content                                                        */}

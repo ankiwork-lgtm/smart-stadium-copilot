@@ -46,7 +46,7 @@ The following assumptions were made during development. In a production deployme
 | **In-memory singleton state** — `simEngine.ts` stores `LiveState` as a module-level variable inside the Next.js server process | Replace with a Redis or Pub/Sub backed store so state is consistent across serverless instances |
 | **Static weather** — "Sunny, 28 °C" is hardcoded in the system prompt | Connect to a weather API (e.g. Google Weather API) and inject current conditions per tick |
 | **Three languages only** — English, Spanish, French | Gemini supports all major languages; extending the picker is a UI-only change |
-| **No authentication** — role is a session toggle, not a verified identity | Add OAuth / venue ticketing SSO; gate ops routes behind a verified `ops` role claim |
+| **PIN-based ops authentication only** — ops_staff role requires a server-verified PIN; fan and volunteer remain self-declared | Add OAuth / venue ticketing SSO; integrate with venue staff directories for real credential validation |
 | **Venue modelled on a generic 80,000-seat NFL stadium in Dallas, TX** — not an actual FIFA 2026 venue | Swap `data/venue.json` for real venue data from the host-city venue operator |
 | **Vercel serverless cold-start** — handled by a `/api/warmup` pre-warm call on app mount; not a substitute for provisioned concurrency at scale | Use Vercel Fluid Compute or provisioned concurrency for the assistant route in production |
 | **No persistent event log** — `eventLog` resets on server restart; briefings only reflect the current process lifetime | Persist events to a database (Postgres / Firestore) for cross-session briefing continuity |
@@ -63,7 +63,7 @@ The following assumptions were made during development. In a production deployme
 | **Transit status** | 🟡 **Simulated** | Same engine — 8 % chance of delay per tick, 40 % recovery per tick |
 | **Incidents** | 🟡 **Simulated** | 5 % chance per tick of a scripted low-severity incident; `triggerSpike()` forces a critical event deterministically |
 | **Weather** | 🟡 **Simulated** | Static — "Sunny, 28 °C" |
-| **User auth / ticketing** | ❌ **Not present** | Role is a session toggle (Fan / Ops / Volunteer) — no real auth |
+| **User auth / ticketing** | 🟡 **Partially implemented** | Ops staff role requires PIN authentication via signed session cookies (HMAC-SHA256); fan and volunteer roles remain self-declared for demo purposes |
 | **Payments / ticketing** | ❌ **Not present** | Out of scope |
 
 The **simulated-data badge** is always visible in the app so judges and users are never misled.
@@ -80,6 +80,7 @@ The **simulated-data badge** is always visible in the app so judges and users ar
 | Styling | **Tailwind CSS 3** | Rapid dark-theme UI, responsive grid |
 | State | **React 19 Context** (`UserContextProvider`) | Lightweight — no Redux needed for this scope; persisted to `localStorage` |
 | Data | **Static JSON** + **module-level singleton** (`simEngine.ts`) | No database required; server-process state survives between polls |
+| Auth | **Node.js `crypto`** (built-in) | No external auth library needed — HMAC-SHA256 signed session cookies, zero added dependencies |
 | Testing | **Vitest 4** | Unit tests for lib and API route logic; no real Gemini calls made in tests |
 | Deploy | **Vercel** | Zero-config Next.js deploy, edge-friendly |
 
@@ -96,9 +97,13 @@ smart-stadium-copilot/
 │   ├── fan/                    # Fan App route (page.tsx + layout.tsx)
 │   ├── ops/                    # Ops Console route (page.tsx + layout.tsx)
 │   └── api/
-│       ├── assistant/          # POST — streaming Gemini chat
+│       ├── assistant/          # POST — streaming Gemini chat (role-aware)
+│       ├── auth/               # Authentication endpoints
+│       │   ├── login/          # POST — PIN-based ops staff login
+│       │   ├── session/        # GET — check current session role
+│       │   └── logout/         # POST — clear session cookie
 │       ├── sim-data/           # GET — advance simulation + return LiveState
-│       │   └── trigger-spike/  # POST — force congestion spike
+│       │   └── trigger-spike/  # POST — force congestion spike (requires ops_staff auth)
 │       ├── alerts/             # GET — threshold-breach alerts (AI-generated)
 │       ├── briefing/           # POST — AI shift briefing
 │       ├── venue/              # GET — static venue.json
@@ -107,7 +112,8 @@ smart-stadium-copilot/
 ├── src/
 │   ├── app/                    # Mirrors app/ — kept for @/* alias resolution
 │   └── components/             # All React components (imported via @/components/…)
-│       ├── AppShell.tsx        # Nav bar, role toggle, language picker
+│       ├── AppShell.tsx        # Nav bar, role toggle, language picker, ops login flow
+│       ├── OpsLoginModal.tsx   # PIN-entry modal for ops staff authentication
 │       ├── ChatPanel.tsx       # Streaming chat UI (shared across fan + ops)
 │       ├── VenueMap.tsx        # SVG map with highlighted pins
 │       ├── IntentChips.tsx     # Quick-select mode chips
@@ -121,6 +127,8 @@ smart-stadium-copilot/
 ├── lib/
 │   ├── gemini.ts               # All Gemini calls (askAssistant, stream, structured)
 │   ├── simEngine.ts            # Simulation tick engine + triggerSpike()
+│   ├── auth.ts                 # Session token creation, verification (HMAC-SHA256)
+│   ├── rateLimiter.ts          # In-process fixed-window rate limiter (20 req/min/IP)
 │   ├── types.ts                # Shared TypeScript types (source of truth)
 │   └── __tests__/              # Vitest unit tests for lib modules
 ├── data/
@@ -151,10 +159,13 @@ git clone <repo-url>
 cd smart-stadium-copilot
 npm install
 
-# 2. Set your Gemini API key
+# 2. Configure environment variables
 cp .env.example .env.local
-# Then edit .env.local and replace the placeholder with your actual key.
-# Get a key at: https://aistudio.google.com/app/apikey
+# Edit .env.local and set:
+#   - GEMINI_API_KEY: your Google AI Studio API key
+#   - SESSION_SECRET: a long random string (e.g. `openssl rand -hex 32`)
+#   - OPS_STAFF_PIN: 4-digit PIN for ops staff login (default: 1234)
+# Get a Gemini key at: https://aistudio.google.com/app/apikey
 
 # 3. Run the dev server
 npm run dev
@@ -182,8 +193,10 @@ The project uses **Vitest** for unit tests. All tests mock external dependencies
 | `lib/__tests__/gemini.test.ts` | Gemini wrapper functions (`askAssistantStructured`, stream helpers) |
 | `lib/__tests__/simEngine.test.ts` | Simulation tick logic, `triggerSpike()`, state transitions |
 | `lib/__tests__/venueData.test.ts` | Venue JSON schema validation and data integrity |
+| `lib/__tests__/rateLimiter.test.ts` | Rate limiter window logic, per-IP counters, GC, `getClientIp` helper |
 | `app/api/__tests__/alerts.test.ts` | Alert breach detection, priority ordering, Gemini parse-error fallback |
-| `app/api/__tests__/assistant.test.ts` | Streaming assistant route behaviour and error handling |
+| `app/api/__tests__/assistant.test.ts` | Streaming assistant route behaviour, role enforcement, rate limit (429) |
+| `app/api/__tests__/routes.test.ts` | Integration tests for sim-data, venue, warmup, trigger-spike, and briefing routes |
 
 ### Commands
 
@@ -229,15 +242,17 @@ npm run test:smoke
 
 ### Flow 2 — Congestion Spike → Ops Alert (2 min)
 
-**Shows:** Real-time simulation, AI-generated operational alerts, colour-coded dashboard
+**Shows:** Real-time simulation, AI-generated operational alerts, colour-coded dashboard, role-based auth
 
-1. In the **AppShell**, switch role to **Ops**
-2. Click **Ops Console →** (or navigate to `/ops`)
-3. Note the **Crowd Dashboard** — gates are moderate/low (green/yellow)
-4. Click the **⚠️ Trigger Spike** button
-5. Within seconds, **Gate A** card turns **red (Critical)**, **Gate B** turns orange (High)
-6. Switch to the **Alerts** tab (or view the centre column on desktop)
-7. A new AI-generated alert appears: summary, recommended action, HIGH priority badge
+1. In the **AppShell**, switch role to **Ops** (click the 🛡️ button)
+2. A **PIN login modal** appears — enter **1234** (the default demo PIN) and click **Login**
+3. The AppShell now shows **"Logout"** button confirming authenticated session
+4. Click **Ops Console →** (or navigate to `/ops`)
+5. Note the **Crowd Dashboard** — gates are moderate/low (green/yellow)
+6. Click the **⚠️ Trigger Spike** button
+7. Within seconds, **Gate A** card turns **red (Critical)**, **Gate B** turns orange (High)
+8. Switch to the **Alerts** tab (or view the centre column on desktop)
+9. A new AI-generated alert appears: summary, recommended action, HIGH priority badge
 
 **Expected outcome:** Dashboard colour change is immediate; AI alert appears within ~3 s with a specific recommended action (open Gate E overflow, PA redirect).
 
@@ -275,6 +290,10 @@ npm run test:smoke
 ---
 
 ## ❓ Judge Q&A — Prepared Answers
+
+### "Is the Ops Console secured?"
+
+Yes. Accessing the Ops Console or switching to the Ops role requires a PIN verified server-side. The server issues an **HMAC-SHA256 signed session cookie** (httpOnly, SameSite=Strict, 8-hour max-age). Protected API routes — including `POST /api/sim-data/trigger-spike` — return HTTP 401/403 without a valid session. Client code that self-declares `ops_staff` without a valid cookie is silently downgraded to `fan` in the assistant route. The demo PIN is `1234`; set `OPS_STAFF_PIN` in `.env.local` to change it.
 
 ### "Is this real crowd data?"
 
@@ -325,6 +344,72 @@ The system prompt includes four strict grounding rules:
 4. If uncertain, err on "I don't have that information" over inventing a plausible-sounding answer
 
 Error resilience: `askAssistantStream` catches all Gemini errors and yields a friendly fallback message. The UI never crashes or shows a raw error.
+
+---
+
+## 🔐 Authentication & Security
+
+### Ops Staff Authentication
+
+The app implements **PIN-based authentication** for the `ops_staff` role using **HMAC-SHA256 signed session cookies**. This protects privileged operations from unauthorized access while keeping the demo simple.
+
+**Architecture:**
+
+| Component | Purpose |
+|---|---|
+| [`lib/auth.ts`](lib/auth.ts) | Core auth logic: token creation, signature verification, PIN validation using Node.js built-in `crypto` module |
+| [`app/api/auth/login/route.ts`](app/api/auth/login/route.ts) | POST endpoint: verifies PIN, sets httpOnly session cookie |
+| [`app/api/auth/session/route.ts`](app/api/auth/session/route.ts) | GET endpoint: returns current authenticated role or null |
+| [`app/api/auth/logout/route.ts`](app/api/auth/logout/route.ts) | POST endpoint: clears session cookie |
+| [`src/components/OpsLoginModal.tsx`](src/components/OpsLoginModal.tsx) | PIN entry UI with real-time validation feedback |
+
+**How it works:**
+
+1. User clicks **Ops** role button or **Ops Console** nav tab
+2. [`AppShell.tsx`](src/components/AppShell.tsx) checks for an existing valid session via `GET /api/auth/session`
+3. If no session exists, [`OpsLoginModal`](src/components/OpsLoginModal.tsx) opens
+4. User enters PIN (default: **1234**, configurable via `OPS_STAFF_PIN` env var)
+5. On submit, `POST /api/auth/login` validates the PIN using constant-time comparison
+6. Server creates a signed token: `base64url(payload).hex(hmac-sha256-signature)`
+7. Token is stored in an **httpOnly, SameSite=Strict** cookie with 8-hour max-age
+8. All subsequent requests carry the cookie; protected routes verify the signature
+
+**Protected routes:**
+
+- [`POST /api/sim-data/trigger-spike`](app/api/sim-data/trigger-spike/route.ts) — requires `ops_staff` session (401/403 otherwise)
+- [`POST /api/assistant`](app/api/assistant/route.ts) — enforces role from cookie; clients claiming `ops_staff` without a valid session are silently downgraded to `fan`
+
+**Security properties:**
+
+- **HMAC signature** prevents token tampering (SHA-256, keyed by `SESSION_SECRET`)
+- **Constant-time comparisons** (`timingSafeEqual`) prevent timing attacks on PIN and signature verification
+- **httpOnly cookie** prevents client-side JavaScript from reading the token
+- **SameSite=Strict** mitigates CSRF attacks
+- **Explicit session expiry** (8 hours) limits token lifetime
+
+**Configuration:**
+
+Set these in your `.env.local` file (see [`.env.example`](.env.example)):
+
+```bash
+# Long random secret — generate with: openssl rand -hex 32
+SESSION_SECRET=your_64_character_hex_secret_here
+
+# 4-digit PIN for ops staff (default: 1234 for demo)
+OPS_STAFF_PIN=1234
+```
+
+> **⚠️ Production note:** The default `SESSION_SECRET` is intentionally insecure for local dev. In production, **always** set a strong random value. The app will start with the dev default but logs a warning.
+
+**Role model:**
+
+| Role | Trust level | Authentication required? |
+|---|---|---|
+| `fan` | Self-declared | ❌ No — client-side only |
+| `volunteer` | Self-declared | ❌ No — client-side only |
+| `ops_staff` | **Server-verified** | ✅ **Yes** — PIN + signed session cookie |
+
+Fan and volunteer roles remain self-declared (stored in `UserContext` via localStorage) because they do not grant access to privileged operations or sensitive data. Only `ops_staff` is gated server-side.
 
 ---
 
