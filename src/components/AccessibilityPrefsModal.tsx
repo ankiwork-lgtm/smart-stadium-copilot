@@ -132,7 +132,7 @@ export function AccessibilityPrefsModal({ forceOpen = false, onClose }: Props) {
       />
 
       {/* Panel */}
-      <div className="relative w-full max-w-md bg-stadium-card border border-white/10 rounded-2xl p-6 shadow-2xl animate-slide-up">
+      <div data-testid="a11y-modal-panel" className="relative w-full max-w-md bg-stadium-card border border-white/10 rounded-2xl p-6 shadow-2xl animate-slide-up">
         {/* Header */}
         <div className="mb-5">
           <h2

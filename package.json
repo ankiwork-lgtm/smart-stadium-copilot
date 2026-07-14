@@ -10,7 +10,10 @@
     "test": "vitest run && npm run test:smoke",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:smoke": "node -e \"const {execSync}=require('child_process');if(!process.env.GEMINI_API_KEY){console.log('test:smoke skipped — GEMINI_API_KEY not set');process.exit(0)}execSync('npx tsx scripts/hello-gemini.ts',{stdio:'inherit'})\""
+    "test:smoke": "node -e \"const {execSync}=require('child_process');if(!process.env.GEMINI_API_KEY){console.log('test:smoke skipped — GEMINI_API_KEY not set');process.exit(0)}execSync('npx tsx scripts/hello-gemini.ts',{stdio:'inherit'})\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@google/genai": "^1.0.1",
@@ -19,13 +22,19 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.3",
     "@vitest/coverage-v8": "^4.1.10",
     "autoprefixer": "^10.5.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
+    "jsdom": "^29.1.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",

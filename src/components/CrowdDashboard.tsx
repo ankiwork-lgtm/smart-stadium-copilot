@@ -92,6 +92,13 @@ const TRANSIT_MODE_ICON: Record<string, string> = {
   rideshare: "🚗",
 };
 
+const CROWD_BAR_LABELS: Record<CrowdLevel, string> = {
+  low: "LOW",
+  moderate: "MOD",
+  high: "HIGH",
+  critical: "CRIT",
+};
+
 function CrowdBar({ level }: { level: CrowdLevel }) {
   const widths: Record<CrowdLevel, string> = {
     low: "w-1/4",
@@ -105,11 +112,27 @@ function CrowdBar({ level }: { level: CrowdLevel }) {
     high: "bg-orange-500",
     critical: "bg-red-500",
   };
+  const textColors: Record<CrowdLevel, string> = {
+    low: "text-emerald-400",
+    moderate: "text-amber-400",
+    high: "text-orange-400",
+    critical: "text-red-400",
+  };
   return (
-    <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mt-2">
-      <div
-        className={`h-full rounded-full transition-all duration-700 ${widths[level]} ${colors[level]}`}
-      />
+    <div className="mt-2">
+      <div className="flex items-center justify-between mb-1">
+        <div className="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden mr-2">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${widths[level]} ${colors[level]}`}
+          />
+        </div>
+        <span
+          className={`text-[10px] font-bold tracking-widest ${textColors[level]}`}
+          aria-hidden="true"
+        >
+          {CROWD_BAR_LABELS[level]}
+        </span>
+      </div>
     </div>
   );
 }

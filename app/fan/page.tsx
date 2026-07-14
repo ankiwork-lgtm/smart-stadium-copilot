@@ -197,7 +197,7 @@ export default function FanPage() {
       </div>
 
       {showA11yModal && (
-        <AccessibilityPrefsModal onClose={() => setShowA11yModal(false)} />
+        <AccessibilityPrefsModal forceOpen onClose={() => setShowA11yModal(false)} />
       )}
     </>
   );
